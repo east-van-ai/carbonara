@@ -1,0 +1,18 @@
+# public-repo-generator <https://github.com/east-van-ai/public-repo-generator>
+
+.git/
+.gitignore
+.weed-out-ignore
+src/**/*.py
+# The stack directories ship data beside their scripts. A *.py-only keep list
+# carves out a tool that cannot find an interpreter or a requirements file, and
+# the failure only shows up on someone else's machine.
+src/carbonara/stacks/*/python-version
+src/carbonara/stacks/*/requirements.txt
+src/carbonara/stacks/*/requirements-pinned.txt
+tests/*.py
+CHANGELOG.md
+DESIGN.md
+LICENSE
+pyproject.toml
+README.md

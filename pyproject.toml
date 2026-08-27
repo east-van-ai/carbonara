@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "carbonara"
+version = "0.1.0"
+description = "One agentic AI demo, four agent stacks, one command."
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "MIT" }
+authors = [{ name = "Go Nakamaru" }]
+keywords = ["cli", "agentic", "llm", "ollama", "crewai", "langgraph", "smolagents"]
+# Deliberately empty. The dispatcher is standard library only, and every
+# framework lives in a virtual environment it never imports from.
+dependencies = []
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+]
+
+# Local tooling, never shipped. A dependency group stays out of the wheel and
+# off PyPI, which an optional-dependencies extra would not. Install with
+# `pip install -e . --group dev` (needs pip 25.1+). The ruff and black pins are
+# exact on purpose: the pin is what freezes ruff's default rule set.
+[dependency-groups]
+dev = [
+    "black==25.11.0",
+    "pytest",
+    "pytest-cov",
+    "ruff==0.16.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/east-van-ai/carbonara"
+
+[project.scripts]
+carbonara = "carbonara.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+# The stack directories are not packages and discovery will not find them.
+# They ship as data because that is what they are: scripts for another
+# interpreter, never imported by this one.
+[tool.setuptools.package-data]
+carbonara = ["stacks/*/*"]
+
+[tool.pytest.ini_options]
+# sys capture required by the subprocess-based integration tests
+addopts = "--capture=sys"
+testpaths = ["tests"]
+
+# The stack scripts are vendored data, not this project's source. They carry
+# the formatting of the repos they came from and the linter leaves them alone.
+[tool.black]
+extend-exclude = "src/carbonara/stacks/"
+
+[tool.ruff]
+extend-exclude = ["src/carbonara/stacks"]
