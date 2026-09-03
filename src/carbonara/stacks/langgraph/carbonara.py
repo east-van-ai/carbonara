@@ -24,6 +24,7 @@
 
 import operator
 import os
+import re
 from typing import Annotated, TypedDict
 
 from langchain_ollama import OllamaLLM
@@ -33,7 +34,7 @@ from langgraph.graph import END, StateGraph
 # The values below are the demo defaults and stay editable by hand. The CLI
 # overrides each through a CARBONARA_* environment variable, because it runs
 # this file under a different interpreter and cannot import it.
-MODEL = os.environ.get("CARBONARA_MODEL", "qwen2.5-coder:3b")
+MODEL = os.environ.get("CARBONARA_MODEL", "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M")
 TEMPERATURE = float(os.environ.get("CARBONARA_TEMPERATURE", "0.3"))
 ORDER = os.environ.get("CARBONARA_ORDER", "make me a carbonara")
 # ------------------------------------------------------------------------------
@@ -83,6 +84,41 @@ DOER_REGISTRY = {
 
 # --- nodes --------------------------------------------------------------------
 
+#: A CALL line, once the decoration is off it. Anchored, so a doer named in
+#: passing mid-sentence is not a call.
+CALL_LINE = re.compile(r"CALL\s+([a-z_]+)\s*:\s*(.+)", re.IGNORECASE)
+
+#: Leading bullets and list numbers, which models add without being asked.
+LIST_PREFIX = re.compile(r"^[\s>]*(?:[-*+]\s*|\d+[.)]\s*)*")
+
+
+def parse_plan(reasoning: str) -> list[tuple]:
+    """Read the expeditor's CALL lines into (doer_name, instruction) pairs.
+
+    e.g. "CALL boil_pasta: Boil 200g spaghetti to al dente"
+    to ("boil_pasta", "Boil 200g spaghetti to al dente").
+
+    Models decorate. The same line arrives as "1. **CALL boil_pasta:** ..."
+    or "CALL **boil_pasta**: ..." depending on who is answering, so list
+    markers and asterisks come off before the match. The registry lookup and
+    the de-duplication below are what keep the plan honest, which is why
+    widening the match cannot invent a step.
+    """
+    plan = []
+    seen = set()
+    for line in reasoning.splitlines():
+        clean = LIST_PREFIX.sub("", line.strip()).replace("*", "")
+        match = CALL_LINE.match(clean)
+        if not match:
+            continue
+        name = match.group(1)
+        if name not in DOER_REGISTRY or name in seen:
+            continue
+        seen.add(name)
+        plan.append((name, match.group(2).strip()))
+
+    return plan
+
 
 def node_dispatcher_receive(state: KitchenState) -> dict:
     """Dispatcher receives the order. No cooking knowledge needed."""
@@ -90,15 +126,10 @@ def node_dispatcher_receive(state: KitchenState) -> dict:
     return {}  # nothing to add to state yet; just a log step
 
 
-def node_expeditor_plan(state: KitchenState) -> dict:
-    """Expeditor reasons through the job and builds a plan."""
-    registry_text = "\n".join(
-        f"  {name}: {desc}" for name, desc in DOER_REGISTRY.items()
-    )
-    system = f"""You are a kitchen expeditor. You coordinate line cooks to complete a dish.
+EXPEDITOR_SYSTEM = """You are a kitchen expeditor. You coordinate line cooks to complete a dish.
 
 You have these doers available:
-{registry_text}
+{registry}
 
 When given an order, reason through what needs to happen step by step.
 Think out loud. Then list the doers you will call, in order, one per line, like this:
@@ -109,6 +140,14 @@ CALL fry_guanciale: <instruction for that doer>
 
 Only use doers from the list above. Sequence matters -- combine always comes last."""
 
+
+def node_expeditor_plan(state: KitchenState) -> dict:
+    """Expeditor reasons through the job and builds a plan."""
+    registry_text = "\n".join(
+        f"  {name}: {desc}" for name, desc in DOER_REGISTRY.items()
+    )
+    system = EXPEDITOR_SYSTEM.format(registry=registry_text)
+
     print(f"\n{label('EXPEDITOR', YELLOW)} thinking about: \"{state['order']}\"\n")
     reasoning = llm.invoke(f"{system}\n\nOrder: {state['order']}").strip()
 
@@ -116,24 +155,7 @@ Only use doers from the list above. Sequence matters -- combine always comes las
         print(f"  {GREY}{line}{RESET}")
     print()
 
-    plan = []
-    seen = set()
-    for line in reasoning.splitlines():
-        stripped = line.strip().upper()
-        if not stripped.startswith(("CALL ", "- CALL ")):
-            continue
-        prefix = "- CALL " if stripped.startswith("- CALL ") else "CALL "
-        rest = line.strip()[len(prefix) :]
-        if ":" not in rest:
-            continue
-        name, instruction = rest.split(":", 1)
-        name = name.strip()
-        if name not in DOER_REGISTRY or name in seen:
-            continue
-        seen.add(name)
-        plan.append((name, instruction.strip()))
-
-    return {"plan": plan, "plan_index": 0}
+    return {"plan": parse_plan(reasoning), "plan_index": 0}
 
 
 def node_run_doer(state: KitchenState) -> dict:

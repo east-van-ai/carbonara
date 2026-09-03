@@ -110,6 +110,32 @@ stack script still runs correctly on its own with no environment set. The demo
 stays editable by hand, which was the point of putting those literals at the
 top in the first place.
 
+## The expeditor's plan survives a decorated answer
+
+Two stacks read their plan out of prose. `no-framework` and `langgraph` both
+ask the expeditor for `CALL <doer>: <instruction>` lines and parse what comes
+back. The other two never parse anything: `smolagents` has the model write
+Python, and `crewai` wires its agents together in a fixed sequence.
+
+Models decorate. The same correct plan arrives as a numbered list, with the
+doer name in bold, or both at once. A parser that requires the line to begin
+with `CALL` drops all of it, and the demo then apologises for a plan the model
+got right.
+
+So list markers and asterisks come off the line before the match. The match
+itself stays anchored to the start, because a doer named in passing partway
+through a sentence is not a call. The registry lookup and the de-duplication
+after it are what keep the plan honest, so widening what matches cannot put a
+step in the plan that is not a doer.
+
+The default is a chat model, and chat models decorate. A coder model emits bare
+literal lines instead, so a parser written against that habit leans on it
+without saying so. Reading both is what keeps the model behind the expeditor a
+choice rather than a constraint.
+
+Each stack keeps its own copy of this. Sharing it would mean one stack
+importing another, which is the comparison this repository exists to make.
+
 ## Telemetry is off unless it is asked for
 
 Three of the four stacks phone home by default. The README promises the
@@ -209,8 +235,14 @@ the roles are dispatcher and expeditor and doers, so a command word out of the
 same world costs nothing and tells the reader what kind of tool this is before
 they run it.
 
+Every command word is a verb, and a command added later takes one too. `menu`
+was considered for `list` and rejected because it is a noun. The metaphor earns
+its place only where it also describes the action.
+
 `carbonara list` names the four stacks, the interpreter each wants, and whether
-its environment is built. It is the command that answers "why did that fail".
+its environment is built. It is the command that answers "why did that fail", so
+its name stays plain. A charming name costs most at exactly the moment someone
+is lost.
 
 ## A command with nothing to name
 
@@ -232,9 +264,9 @@ reachable or does not have the model pulled.
 
 These are readiness failures, not grammar failures, so they print no usage
 line. Each names the exact command that fixes it, `pyenv install 3.12` or
-`ollama pull qwen2.5-coder:3b`. `cook-with` checks both before it builds
-anything, so a missing model surfaces in a second rather than after an
-install.
+`ollama pull hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M`. `cook-with` checks
+both before it builds anything, so a missing model surfaces in a second rather
+than after an install.
 
 ## Exit codes
 

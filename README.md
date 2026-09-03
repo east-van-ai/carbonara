@@ -118,7 +118,8 @@ environment is ready.
 ## Requirements
 
 - [Ollama](https://ollama.com) running locally
-- `qwen2.5-coder:3b` pulled: `ollama pull qwen2.5-coder:3b`
+- Cohere's `tiny-aya` pulled:
+  `ollama pull hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M`
 - Python 3.14 for `carbonara` itself
 - Python 3.12 available for the `crewai` stack
 
@@ -139,7 +140,7 @@ Two doors, and it depends what you came for.
 To watch it run:
 
 ```bash
-pipx install git+https://github.com/east-van-ai/carbonara
+pipx install git+https://github.com/east-van-ai/carbonara.git
 ```
 
 Not from PyPI. The `carbonara` package there is an unrelated placeholder that
@@ -148,7 +149,7 @@ has nothing to do with this.
 To read the four side by side:
 
 ```bash
-git clone https://github.com/east-van-ai/carbonara
+git clone https://github.com/east-van-ai/carbonara.git
 ```
 
 Then open `src/carbonara/stacks/`. Four directories, one file each, same

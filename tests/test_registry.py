@@ -56,7 +56,7 @@ def test_stack_scripts_read_the_environment(stack):
 def test_stack_scripts_keep_their_defaults(stack):
     """A stack still runs on its own, with nothing set. That is the demo."""
     source = stack.script.read_text()
-    assert '"qwen2.5-coder:3b"' in source
+    assert f'"{registry.DEFAULT_MODEL}"' in source
     assert '"make me a carbonara"' in source
 
 

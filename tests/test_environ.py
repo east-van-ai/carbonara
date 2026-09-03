@@ -64,9 +64,9 @@ def test_an_unreachable_ollama_names_its_fix(monkeypatch):
 def test_a_missing_model_names_the_pull(monkeypatch):
     """Reaching Ollama is not the same as having the model."""
     monkeypatch.setattr(environ, "installed_models", lambda: {"something-else"})
-    check = environ.check_ollama("qwen2.5-coder:3b")
+    check = environ.check_ollama(registry.DEFAULT_MODEL)
     assert check.ok is False
-    assert check.fix == "ollama pull qwen2.5-coder:3b"
+    assert check.fix == f"ollama pull {registry.DEFAULT_MODEL}"
 
 
 def test_overrides_drop_the_unset(monkeypatch):

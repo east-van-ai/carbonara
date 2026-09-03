@@ -24,7 +24,8 @@
 #
 #    --order TEXT        the order to give the kitchen. Default is
 #                        "make me a carbonara".
-#    --model NAME        Ollama model. Default is qwen2.5-coder:3b.
+#    --model NAME        Ollama model. Default is
+#                        hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M.
 #    --temperature N     0.0 to 2.0. Near zero keeps the plan stable.
 #                        Push it up and the expeditor improvises.
 #    --stream-delay N    seconds per token, for slowing the reasoning

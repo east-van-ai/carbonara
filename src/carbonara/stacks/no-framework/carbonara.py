@@ -23,6 +23,7 @@
 """
 
 import os
+import re
 import time
 
 import ollama
@@ -31,7 +32,7 @@ import ollama
 # The values below are the demo defaults and stay editable by hand. The CLI
 # overrides each through a CARBONARA_* environment variable, because it runs
 # this file under a different interpreter and cannot import it.
-MODEL = os.environ.get("CARBONARA_MODEL", "qwen2.5-coder:3b")
+MODEL = os.environ.get("CARBONARA_MODEL", "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M")
 TEMPERATURE = float(os.environ.get("CARBONARA_TEMPERATURE", "0.3"))
 ORDER = os.environ.get("CARBONARA_ORDER", "make me a carbonara")
 STREAM_DELAY = float(os.environ.get("CARBONARA_STREAM_DELAY", "0.0"))
@@ -159,6 +160,42 @@ CALL fry_guanciale: <instruction for that doer>
 Only use doers from the list above. Sequence matters - combine always comes last."""
 
 
+#: A CALL line, once the decoration is off it. Anchored, so a doer named in
+#: passing mid-sentence is not a call.
+CALL_LINE = re.compile(r"CALL\s+([a-z_]+)\s*:\s*(.+)", re.IGNORECASE)
+
+#: Leading bullets and list numbers, which models add without being asked.
+LIST_PREFIX = re.compile(r"^[\s>]*(?:[-*+]\s*|\d+[.)]\s*)*")
+
+
+def parse_plan(reasoning: str) -> list[tuple]:
+    """Read the expeditor's CALL lines into (doer_name, instruction) pairs.
+
+    e.g. "CALL boil_pasta: Boil 200g spaghetti to al dente"
+    to ("boil_pasta", "Boil 200g spaghetti to al dente").
+
+    Models decorate. The same line arrives as "1. **CALL boil_pasta:** ..."
+    or "CALL **boil_pasta**: ..." depending on who is answering, so list
+    markers and asterisks come off before the match. The registry lookup and
+    the de-duplication below are what keep the plan honest, which is why
+    widening the match cannot invent a step.
+    """
+    plan = []
+    for line in reasoning.splitlines():
+        clean = LIST_PREFIX.sub("", line.strip()).replace("*", "")
+        match = CALL_LINE.match(clean)
+        if not match:
+            continue
+        name = match.group(1)
+        if name not in DOER_REGISTRY:
+            continue
+        if any(item[0] == name for item in plan):
+            continue
+        plan.append((name, match.group(2).strip()))
+
+    return plan
+
+
 def expeditor(order: str) -> list[tuple]:
     registry_text = "\n".join(
         f"  {name}: {desc}" for name, (_, desc) in DOER_REGISTRY.items()
@@ -172,27 +209,7 @@ def expeditor(order: str) -> list[tuple]:
     reasoning = llm_stream(system, order)
     print()
 
-    # Parse CALL lines into (doer_name, instruction) pairs.
-    # e.g. "CALL boil_pasta: Boil 200g spaghetti to al dente"
-    # to ("boil_pasta", "Boil 200g spaghetti to al dente")
-    plan = []
-    for line in reasoning.splitlines():
-        line_stripped = line.strip().upper()
-        if not line_stripped.startswith(("CALL ", "- CALL ")):
-            continue
-        prefix = "- CALL " if line_stripped.startswith("- CALL ") else "CALL "
-        rest = line.strip()[len(prefix) :]
-        if ":" not in rest:
-            continue
-        name, instruction = rest.split(":", 1)
-        name = name.strip()
-        if name not in DOER_REGISTRY:
-            continue
-        if any(item[0] == name for item in plan):
-            continue
-        plan.append((name, instruction.strip()))
-
-    return plan
+    return parse_plan(reasoning)
 
 
 # --- dispatcher ---------------------------------------------------------------

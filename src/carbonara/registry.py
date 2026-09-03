@@ -12,7 +12,7 @@ from typing import NamedTuple
 STACKS_DIR = Path(__file__).parent / "stacks"
 
 #: The model every stack talks to, and the one readiness checks look for.
-DEFAULT_MODEL = "qwen2.5-coder:3b"
+DEFAULT_MODEL = "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M"
 
 SUMMARIES = {
     "no-framework": "Plain Python. A prompt and a registry.",

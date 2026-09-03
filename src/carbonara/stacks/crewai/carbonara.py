@@ -31,7 +31,7 @@ from crewai import LLM, Agent, Crew, Task
 # The values below are the demo defaults and stay editable by hand. The CLI
 # overrides each through a CARBONARA_* environment variable, because it runs
 # this file under a different interpreter and cannot import it.
-MODEL = os.environ.get("CARBONARA_MODEL", "qwen2.5-coder:3b")
+MODEL = os.environ.get("CARBONARA_MODEL", "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M")
 TEMPERATURE = float(os.environ.get("CARBONARA_TEMPERATURE", "0.3"))
 ORDER = os.environ.get("CARBONARA_ORDER", "make me a carbonara")
 # ------------------------------------------------------------------------------
