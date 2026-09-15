@@ -20,8 +20,7 @@ WINDOWS = os.name == "nt"
 
 # Every phone-home switch the four stacks honour, set to off. carbonara sets
 # these before it runs anything, and --telemetry leaves them unset so the
-# frameworks behave as their own documentation says. See DESIGN.md,
-# "Telemetry is off unless it is asked for".
+# frameworks behave as their own documentation says.
 TELEMETRY_OFF = {
     "CREWAI_DISABLE_TELEMETRY": "true",
     "CREWAI_DISABLE_TRACKING": "true",

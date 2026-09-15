@@ -1,6 +1,6 @@
 """Telemetry is off unless it is asked for.
 
-Three of the four stacks phone home by default and the README promises they do
+Three of the four stacks phone home by default and carbonara promises they do
 not, so the promise is pinned here rather than left to a code review.
 """
 

@@ -31,7 +31,7 @@
 #    --stream-delay N    seconds per token, for slowing the reasoning
 #                        trace down on fast hardware.
 #    --telemetry         leave the framework's own telemetry defaults
-#                        alone. Off by default, see DESIGN.md.
+#                        alone. Off by default.
 """
 
 from . import environ, registry

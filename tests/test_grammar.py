@@ -16,6 +16,7 @@ def test_bare_tool_prints_the_banner(invoke):
     assert code == EXIT_OK
     assert "~~~ carbonara ~~~" in out
     assert "Exit codes:" in out
+    assert "--version" not in out
 
 
 @pytest.mark.parametrize("command", ["prep", "cook-with"])
@@ -49,7 +50,7 @@ def test_missing_stack_is_an_error_not_help(invoke, command):
     code, _, err = invoke(command, "--latest" if command == "prep" else "--order=x")
     assert code == EXIT_ERROR
     assert "needs STACK" in err
-    assert "Usage:" in err
+    assert f"Usage: carbonara {command}" in err
 
 
 def test_stack_after_a_flag_is_not_accepted(invoke):
@@ -69,6 +70,7 @@ def test_a_second_bare_word_is_named(invoke):
     code, _, err = invoke("cook-with", "crewai", "extra")
     assert code == EXIT_ERROR
     assert "'extra'" in err
+    assert "Usage: carbonara cook-with" in err
 
 
 def test_version_is_documentation(invoke):
@@ -76,6 +78,28 @@ def test_version_is_documentation(invoke):
     code, out, _ = invoke("--version")
     assert code == EXIT_OK
     assert out.startswith("carbonara ")
+
+
+def test_version_command_word_is_documentation(invoke):
+    """version prints the program name and a number, exit 0."""
+    code, out, _ = invoke("version")
+    assert code == EXIT_OK
+    assert out.startswith("carbonara ")
+
+
+def test_both_version_spellings_print_the_same_line(invoke):
+    """version and --version share one helper, so their lines cannot drift."""
+    _, word, _ = invoke("version")
+    _, flag, _ = invoke("--version")
+    assert word == flag
+
+
+def test_version_rejects_a_stray_word(invoke):
+    """A word after version is a usage error with version's own usage line."""
+    code, _, err = invoke("version", "extra")
+    assert code == EXIT_ERROR
+    assert "'extra'" in err
+    assert "Usage: carbonara version" in err
 
 
 @pytest.mark.parametrize(
@@ -88,6 +112,8 @@ def test_version_is_documentation(invoke):
         ("cook-with", "crewai", "--temperature", "9"),
         ("cook-with", "crewai", "--temperature", "hot"),
         ("list", "--version"),
+        ("version", "--version"),
+        ("version", "--latest"),
     ],
     ids=[
         "unknown command",
@@ -97,6 +123,8 @@ def test_version_is_documentation(invoke):
         "temperature out of range",
         "temperature not a number",
         "version on a command",
+        "version on the version command",
+        "unknown flag on version",
     ],
 )
 def test_argparse_keeps_the_vocabulary_it_owns(invoke, arguments):

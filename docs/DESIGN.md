@@ -2,6 +2,7 @@
 
 Design notes for `carbonara`. Decisions and the reasoning under them. The
 README draws the finished shape; this file says why that shape and not another.
+The command surface, and the decisions made about it, live in CLI.md.
 
 ## What this consolidates
 
@@ -66,12 +67,6 @@ third, for a `pipx` install sitting on an interpreter `PATH` never names.
 Every candidate is then run and asked what version it is. Finding a name is not
 the same as finding a working interpreter, and a shim that resolves somewhere
 unexpected should be caught rather than trusted.
-
-`prep` installs from `requirements-pinned.txt`. This is demonstration software
-that gets run in front of people, so a run that behaves the way it behaved
-yesterday is worth more than a run on the newest resolvable tree. `--latest`
-installs from the unpinned `requirements.txt` for anyone deliberately testing
-against current releases.
 
 ## Stacks are data, not packages
 
@@ -213,66 +208,6 @@ command, the repository, and the package all answer to the same word.
 The install line names the repository rather than the package index, so nobody
 following the README lands on the placeholder.
 
-## Command surface
-
-```text
-carbonara list
-carbonara prep STACK [--latest]
-carbonara cook-with STACK [--order TEXT] [--model NAME] [--temperature N]
-carbonara cook-with STACK [--stream-delay N] [--telemetry]
-```
-
-The original sketch was `carbonara crewai`, with the stack as the command word.
-That form cannot work here, because a command word and nothing else is reserved
-for documentation. `carbonara crewai` can only ever print help, never cook
-anything. Making the stack the main argument of a verb keeps the reserved form
-free and keeps the stack list as data rather than as vocabulary.
-
-The verb is `cook-with` rather than `run`, and it earns the extra syllable.
-`carbonara cook-with crewai` reads as a sentence, and `carbonara cook-with
-no-framework` reads as the joke it is. The scenario is a kitchen throughout,
-the roles are dispatcher and expeditor and doers, so a command word out of the
-same world costs nothing and tells the reader what kind of tool this is before
-they run it.
-
-Every command word is a verb, and a command added later takes one too. `menu`
-was considered for `list` and rejected because it is a noun. The metaphor earns
-its place only where it also describes the action.
-
-`carbonara list` names the four stacks, the interpreter each wants, and whether
-its environment is built. It is the command that answers "why did that fail", so
-its name stays plain. A charming name costs most at exactly the moment someone
-is lost.
-
-## A command with nothing to name
-
-The house rule reserves a bare command word for documentation, on the reasoning
-that the user typed something incomplete and should get help rather than an
-error. `carbonara list` takes no argument, so there is nothing incomplete about
-it, and applying the rule literally would leave `list` with no way to run.
-
-So a command that takes no main argument runs on its bare form. The divergence
-is deliberate and narrow: `list` is the only such command, and a stray word
-after it is still a usage error. Its documentation lives in the banner, which
-is where a one-line command belongs.
-
-## Readiness
-
-Two things fail outside the tool's control, and both fail the same way for
-every stack: the interpreter a stack needs is not installed, and Ollama is not
-reachable or does not have the model pulled.
-
-These are readiness failures, not grammar failures, so they print no usage
-line. Each names the exact command that fixes it, `pyenv install 3.12` or
-`ollama pull hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M`. `cook-with` checks
-both before it builds anything, so a missing model surfaces in a second rather
-than after an install.
-
-## Exit codes
-
-0 for success and for documentation, 1 for the tool's own errors including
-readiness failures, 2 for argparse. Standard for the toolchain.
-
 ## Layout
 
 ```text
@@ -289,12 +224,11 @@ src/carbonara/
 
 ## Use of AI
 
-Both the use of AI and its disclosure are deliberate. Code and
-documentation in this project are written in collaboration with
-Artificial Intelligence (AI). The division of labour: the AI explores,
-challenges assumptions and edge cases, and drafts; the human
-initiates, drafts the designs, explores alongside the AI, reviews
-every change, and decides what gets committed.
+Both the use of AI and its disclosure are deliberate. Code and documentation in
+this project are written in collaboration with Artificial Intelligence (AI). The
+division of labour: the AI explores, challenges assumptions and edge cases, and
+drafts; the human initiates, drafts the designs, explores alongside the AI,
+reviews every change, and decides what gets committed.
 
 ---
 

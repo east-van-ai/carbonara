@@ -13,7 +13,8 @@ src/carbonara/stacks/*/requirements.txt
 src/carbonara/stacks/*/requirements-pinned.txt
 tests/*.py
 CHANGELOG.md
-DESIGN.md
+docs/CLI.md
+docs/DESIGN.md
 LICENSE
 pyproject.toml
 README.md

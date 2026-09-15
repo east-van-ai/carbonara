@@ -24,7 +24,6 @@
 #    carbonara prep STACK [--latest]
 #    carbonara cook-with STACK [--order TEXT] [--model NAME] [--temperature N]
 #    carbonara cook-with STACK --telemetry
-#    carbonara --version
 #
 # Commands:
 #
@@ -59,10 +58,7 @@
 #    carbonara cook-with
 #
 # list takes no STACK, so bare `carbonara list` runs rather than
-# documenting itself. See DESIGN.md, "A command with nothing to name".
-#
-# carbonara --version prints the installed version. Documentation too,
-# so it exits 0. It needs no command word, and no command accepts it.
+# documenting itself.
 #
 # STACK comes first, then flags, whose order among themselves is free.
 # Spell flags in full: an abbreviation like `--temp` is rejected, so it
@@ -85,7 +81,7 @@
 import sys
 
 from . import cli_cook_with, cli_list, cli_prep, registry
-from .args import EXIT_ARGPARSE, EXIT_ERROR, EXIT_OK, build_parser
+from .args import EXIT_ARGPARSE, EXIT_ERROR, EXIT_OK, build_parser, version_line
 
 __all__ = ["EXIT_ARGPARSE", "EXIT_ERROR", "EXIT_OK", "main"]
 
@@ -101,6 +97,10 @@ COMMANDS = {
 # missing. Its bare form is a complete command line, not a question.
 STACKLESS = {"list"}
 
+# version is missing from both on purpose. It has no command module, so main()
+# answers it directly, and its stray-word error reaches for this usage line.
+VERSION_USAGE = "carbonara version"
+
 
 def leading_paths(tokens):
     """Return the tokens ahead of the first flag.
@@ -108,7 +108,6 @@ def leading_paths(tokens):
     The documented grammar puts STACK before every flag, so the slot is read
     off the front of the command line. What argparse resolved from anywhere
     else is discarded, since how much it tolerates depends on the interpreter.
-    See DESIGN.md, "Positions are decided, not inferred".
     """
     paths = []
     for token in tokens:
@@ -118,14 +117,10 @@ def leading_paths(tokens):
     return paths
 
 
-def usage_error(module, message):
-    """Report a command line carbonara could not read, with that command's usage.
-
-    Grammar errors only. A readiness failure prints no usage line, and is
-    reported by environ.report() instead.
-    """
+def usage_error(usage, message):
+    """Report a command line carbonara could not read, with the matching usage."""
     print(f"carbonara: {message}", file=sys.stderr)
-    print(f"Usage: {module.USAGE}", file=sys.stderr)
+    print(f"Usage: {usage}", file=sys.stderr)
     return EXIT_ERROR
 
 
@@ -153,13 +148,22 @@ def main():
     if any(extra.startswith("-") for extra in extras):
         parser.parse_args(tokens)  # argparse names the flag better, exit 2
 
+    if args.command == "version":
+        strays = leading_paths(tokens[1:])
+        if strays:
+            return usage_error(
+                VERSION_USAGE, f"version takes no arguments: {strays[0]!r}"
+            )
+        print(version_line())
+        return EXIT_OK
+
     module = COMMANDS[args.command]
 
     if args.command in STACKLESS:
         strays = leading_paths(tokens[1:])
         if strays:
             return usage_error(
-                module, f"{args.command} takes no arguments: {strays[0]!r}"
+                module.USAGE, f"{args.command} takes no arguments: {strays[0]!r}"
             )
         return module.run(args)
 
@@ -167,15 +171,15 @@ def main():
     # by interpreter, and the grammar should not.
     names = leading_paths(tokens[1:])
     if not names:
-        return usage_error(module, f"{args.command} needs STACK")
+        return usage_error(module.USAGE, f"{args.command} needs STACK")
     if len(names) > 1:
         return usage_error(
-            module, f"{args.command} takes nothing after STACK: {names[1]!r}"
+            module.USAGE, f"{args.command} takes nothing after STACK: {names[1]!r}"
         )
 
     stack = registry.find(names[0])
     if stack is None:
-        return usage_error(module, f"unknown stack {names[0]!r}")
+        return usage_error(module.USAGE, f"unknown stack {names[0]!r}")
 
     return module.run(stack, args)
 

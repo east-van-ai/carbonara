@@ -80,8 +80,7 @@ def test_no_stack_imports_carbonara_or_another_stack(stack):
     """The four stay independent, which is what makes them comparable.
 
     Factoring their shared parts into a common module is the obvious tidy and
-    would destroy the comparison. See DESIGN.md, "Stacks are data, not
-    packages".
+    would destroy the comparison.
     """
     tree = ast.parse(stack.script.read_text())
     imported = set()

@@ -13,6 +13,8 @@ EXIT_OK = 0
 EXIT_ERROR = 1
 EXIT_ARGPARSE = 2
 
+PROG = "carbonara"
+
 
 def installed_version():
     """Return the version of the installed carbonara distribution."""
@@ -20,6 +22,11 @@ def installed_version():
         return metadata.version("carbonara")
     except metadata.PackageNotFoundError:
         return "unknown (not installed)"
+
+
+def version_line():
+    """Return the program name and the installed version on one line."""
+    return f"{PROG} {installed_version()}"
 
 
 def temperature(value):
@@ -50,11 +57,11 @@ def build_parser():
     `--version` stays on the top-level parser alone, so asking a command for
     the version is an unknown flag and exits 2.
     """
-    parser = argparse.ArgumentParser(prog="carbonara", allow_abbrev=False)
+    parser = argparse.ArgumentParser(prog=PROG, allow_abbrev=False)
     parser.add_argument(
         "--version",
         action="version",
-        version=f"%(prog)s {installed_version()}",
+        version=version_line(),
         help="print the installed version and exit",
     )
     commands = parser.add_subparsers(dest="command", required=True)
@@ -91,6 +98,10 @@ def build_parser():
         "--telemetry",
         action="store_true",
         help="leave the frameworks' own telemetry defaults alone",
+    )
+
+    commands.add_parser(
+        "version", allow_abbrev=False, help="print the installed version and exit"
     )
 
     return parser

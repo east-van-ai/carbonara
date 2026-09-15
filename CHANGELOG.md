@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-15
+
+### Added
+
+- `carbonara version` prints the installed version, the same line as
+  `--version`.
+
+### Changed
+
+- The banner no longer lists `--version`.
+- `DESIGN.md` moves to `docs/DESIGN.md`, and its command-surface half becomes
+  `docs/CLI.md`.
+
 ## [0.2.0] - 2026-09-03
 
 ### Changed
