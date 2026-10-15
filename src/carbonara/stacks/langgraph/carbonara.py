@@ -37,6 +37,7 @@ from langgraph.graph import END, StateGraph
 MODEL = os.environ.get("CARBONARA_MODEL", "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M")
 TEMPERATURE = float(os.environ.get("CARBONARA_TEMPERATURE", "0.3"))
 ORDER = os.environ.get("CARBONARA_ORDER", "make me a carbonara")
+OLLAMA_URL = os.environ.get("CARBONARA_OLLAMA_URL", "http://localhost:11434")
 # ------------------------------------------------------------------------------
 
 CYAN = "\033[96m"
@@ -45,7 +46,7 @@ GREEN = "\033[92m"
 GREY = "\033[90m"
 RESET = "\033[0m"
 
-llm = OllamaLLM(model=MODEL, temperature=TEMPERATURE)
+llm = OllamaLLM(model=MODEL, temperature=TEMPERATURE, base_url=OLLAMA_URL)
 
 
 def label(role: str, color: str) -> str:

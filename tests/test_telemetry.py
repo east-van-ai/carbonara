@@ -37,6 +37,7 @@ def test_every_framework_channel_is_named():
         "HF_HUB_DISABLE_TELEMETRY",
         "LANGCHAIN_TRACING_V2",
         "LANGSMITH_TRACING",
+        "LITELLM_LOCAL_MODEL_COST_MAP",
     }
 
 
@@ -72,7 +73,7 @@ def test_overrides_still_reach_the_stack(captured_env):
 
 
 def test_tracing_is_declined_when_never_answered(tmp_path):
-    """No environment variable can turn crewai tracing off. The file is it."""
+    """crewai's first-run prompt reads the file before it asks. A decline stops it."""
     assert environ.decline_crewai_tracing() is True
     written = json.loads((tmp_path / "state" / ".crewai_user.json").read_text())
     assert written["trace_consent"] is False

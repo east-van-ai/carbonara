@@ -28,6 +28,9 @@ TELEMETRY_OFF = {
     "HF_HUB_DISABLE_TELEMETRY": "1",
     "LANGCHAIN_TRACING_V2": "false",
     "LANGSMITH_TRACING": "false",
+    # Not telemetry, but a fetch from GitHub on every run, which smolagents
+    # makes through LiteLLM. Off, LiteLLM uses the copy it ships with.
+    "LITELLM_LOCAL_MODEL_COST_MAP": "True",
 }
 
 # crewai files its consent under the basename of the working directory unless
@@ -219,10 +222,10 @@ def crewai_state_dir(storage_name=CREWAI_STORAGE_NAME):
 def decline_crewai_tracing(storage_name=CREWAI_STORAGE_NAME):
     """Record a declined trace consent, without overwriting an answer already there.
 
-    No environment variable can turn crewai's tracing off. CREWAI_TRACING_ENABLED
-    is read as `in ("true", "1")`, so it only ever turns tracing on, and the
-    consent file is the sole control. An answer already in the file is left
-    alone, so a deliberate yes survives.
+    The switches in TELEMETRY_OFF stop tracing for the run, but crewai's
+    first-run prompt reads this file before it asks. A decline here is what
+    keeps it quiet. An answer already in the file is left alone, so a
+    deliberate yes survives.
 
     Returns True when this call wrote the decline.
     """

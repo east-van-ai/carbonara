@@ -14,11 +14,11 @@ carbonara cook-with STACK [--stream-delay N] [--telemetry]
 carbonara version
 ```
 
-The original sketch was `carbonara crewai`, with the stack as the command word.
-That form cannot work here, because a command word and nothing else is reserved
-for documentation. `carbonara crewai` can only ever print help, never cook
-anything. Making the stack the main argument of a verb keeps the reserved form
-free and keeps the stack list as data rather than as vocabulary.
+The stack is the main argument of a verb, never the command word. A command
+word and nothing else is reserved for documentation, so `carbonara crewai` could
+only ever print help, never cook anything. Keeping the stack out of the command
+position keeps the reserved form free, and keeps the stack list as data rather
+than as vocabulary.
 
 The verb is `cook-with` rather than `run`, and it earns the extra syllable.
 `carbonara cook-with crewai` reads as a sentence, and `carbonara cook-with
@@ -90,10 +90,10 @@ every stack: the interpreter a stack needs is not installed, and Ollama is not
 reachable or does not have the model pulled.
 
 These are readiness failures, not grammar failures, so they print no usage
-line. Each names the exact command that fixes it, `pyenv install 3.12` or
-`ollama pull hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M`. `cook-with` checks
-both before it builds anything, so a missing model surfaces in a second rather
-than after an install.
+line. Each names the exact command that fixes it: `pyenv install 3.12`,
+`ollama serve`, or `ollama pull hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M`.
+`cook-with` checks both before it builds anything, so a missing model surfaces
+in a second rather than after an install.
 
 ## Exit codes
 
@@ -102,8 +102,11 @@ Standard for the toolchain.
 | Code | When |
 | --- | --- |
 | 0 | Success, or documentation from a bare command word. |
-| 1 | The tool's own errors: a misplaced or stray word, a readiness failure. |
-| 2 | argparse refused the line: an unknown stack or flag, or an abbreviation. |
+| 1 | Its own errors: a missing or stray word, a readiness failure, a failed build. |
+| 2 | argparse refused the line: an unknown command, stack, or flag, a bad value. |
+
+Once a stack's script starts, `cook-with` exits with that script's own code,
+passed through unchanged.
 
 ## Use of AI
 

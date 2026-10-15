@@ -32,6 +32,7 @@ from smolagents import CodeAgent, LiteLLMModel, tool
 MODEL = os.environ.get("CARBONARA_MODEL", "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M")
 TEMPERATURE = float(os.environ.get("CARBONARA_TEMPERATURE", "0.3"))
 ORDER = os.environ.get("CARBONARA_ORDER", "make me a carbonara")
+OLLAMA_URL = os.environ.get("CARBONARA_OLLAMA_URL", "http://localhost:11434")
 # ------------------------------------------------------------------------------
 
 CYAN = "\033[96m"
@@ -39,6 +40,8 @@ YELLOW = "\033[93m"
 GREEN = "\033[92m"
 GREY = "\033[90m"
 RESET = "\033[0m"
+
+ollama_client = ollama.Client(host=OLLAMA_URL)
 
 
 def label(role: str, color: str) -> str:
@@ -57,7 +60,7 @@ DOER_SYSTEM = (
 
 def _doer_call(name: str, instruction: str) -> str:
     print(f"  {label(f'DOER {name}', GREEN)}  {GREY}{instruction}{RESET}")
-    response = ollama.chat(
+    response = ollama_client.chat(
         model=MODEL,
         options={"temperature": TEMPERATURE},
         messages=[
@@ -126,7 +129,7 @@ def combine(instruction: str) -> str:
 def build_expeditor() -> CodeAgent:
     model = LiteLLMModel(
         model_id=f"ollama_chat/{MODEL}",
-        api_base="http://localhost:11434",
+        api_base=OLLAMA_URL,
         api_key="local",  # required field; value ignored by Ollama
         num_ctx=8192,  # default 2048 is too small for code generation
         temperature=TEMPERATURE,
@@ -161,7 +164,7 @@ def dispatcher(order: str) -> str:
     )
 
     # Dispatcher relays to guest
-    response = ollama.chat(
+    response = ollama_client.chat(
         model=MODEL,
         options={"temperature": TEMPERATURE},
         messages=[

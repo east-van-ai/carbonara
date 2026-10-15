@@ -49,8 +49,29 @@ def test_stack_scripts_read_the_environment(stack):
     other way, so a stack that stops reading them goes quietly deaf.
     """
     source = stack.script.read_text()
-    for name in ("CARBONARA_MODEL", "CARBONARA_TEMPERATURE", "CARBONARA_ORDER"):
+    for name in (
+        "CARBONARA_MODEL",
+        "CARBONARA_TEMPERATURE",
+        "CARBONARA_ORDER",
+        "CARBONARA_OLLAMA_URL",
+    ):
         assert f'os.environ.get("{name}"' in source
+
+
+def test_stack_scripts_hardcode_no_ollama_url(stack):
+    """The Ollama URL appears once, as the default of CARBONARA_OLLAMA_URL.
+
+    A second copy is a call that ignores OLLAMA_HOST, and in a locked
+    container a call that reaches nothing.
+    """
+    lines = [line for line in stack.script.read_text().splitlines() if "11434" in line]
+    assert len(lines) == 1
+    assert "CARBONARA_OLLAMA_URL" in lines[0]
+
+
+def test_stack_scripts_call_ollama_through_a_client(stack):
+    """The module-level ollama.chat reads OLLAMA_HOST, never the URL it is given."""
+    assert "ollama.chat(" not in stack.script.read_text()
 
 
 def test_stack_scripts_keep_their_defaults(stack):
@@ -95,3 +116,27 @@ def test_no_stack_imports_carbonara_or_another_stack(stack):
     siblings = set(registry.NAMES) - {stack.name}
     assert "carbonara" not in imported
     assert imported.isdisjoint(siblings)
+
+
+#: Tools that belong to a development venv, never to a stack. One leaking into
+#: a pinned set means the set was frozen from the wrong venv.
+DEVELOPER_TOOLS = {"black", "ruff", "pytest", "pip"}
+
+
+def test_pinned_sets_hold_no_developer_tool(stack):
+    """A pin frozen from a development venv ships its formatter to every user."""
+    lines = stack.requirements(pinned=True).read_text().splitlines()
+    names = {line.split("==")[0].lower() for line in lines if "==" in line}
+    assert names.isdisjoint(DEVELOPER_TOOLS)
+
+
+def test_pinned_sets_say_when_they_were_tested(stack):
+    """The header dates the set, so a stale pin is visible at a glance."""
+    first = stack.requirements(pinned=True).read_text().splitlines()[0]
+    assert first.startswith("# tested on ")
+
+
+@pytest.mark.parametrize("pinned", [True, False])
+def test_requirements_end_with_a_newline(stack, pinned):
+    """A missing final newline glues the next file's first line onto the last."""
+    assert stack.requirements(pinned=pinned).read_text().endswith("\n")

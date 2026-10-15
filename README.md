@@ -159,10 +159,8 @@ answers to it.
 
 ## Use of AI
 
-This project is built with Artificial Intelligence (AI), deliberately
-and in the open. Code and documentation are written in collaboration
-with remote and local AI; design decisions, code review, and final
-judgement stay human.
+Code and documentation are written in collaboration with remote and local AI; design
+decisions, code review, semantic and auditory review, and final judgement stay human.
 
 ---
 

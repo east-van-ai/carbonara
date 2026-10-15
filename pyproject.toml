@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "carbonara"
-version = "0.2.1"
+version = "0.2.2"
 description = "One agentic AI demo, four agent stacks, one command."
 readme = "README.md"
 requires-python = ">=3.14"
@@ -24,11 +24,10 @@ classifiers = [
 
 # Local tooling, never shipped. A dependency group stays out of the wheel and
 # off PyPI, which an optional-dependencies extra would not. Install with
-# `pip install -e . --group dev` (needs pip 25.1+). The ruff and black pins are
-# exact on purpose: the pin is what freezes ruff's default rule set.
+# `pip install -e . --group dev` (needs pip 25.1+). The ruff pin is exact on
+# purpose: the pin is what freezes ruff's default rule set and its format.
 [dependency-groups]
 dev = [
-    "black==25.11.0",
     "pytest",
     "pytest-cov",
     "ruff==0.16.0",
@@ -58,9 +57,8 @@ addopts = "--capture=sys"
 testpaths = ["tests"]
 
 # The stack scripts are vendored data, not this project's source. They carry
-# the formatting of the repos they came from and the linter leaves them alone.
-[tool.black]
-extend-exclude = "src/carbonara/stacks/"
-
+# the formatting of the repos they came from, and ruff leaves them alone.
 [tool.ruff]
 extend-exclude = ["src/carbonara/stacks"]
+# One below requires-python: at py314, ruff format writes `except A, B:`.
+target-version = "py313"

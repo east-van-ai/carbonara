@@ -35,6 +35,7 @@ import ollama
 MODEL = os.environ.get("CARBONARA_MODEL", "hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M")
 TEMPERATURE = float(os.environ.get("CARBONARA_TEMPERATURE", "0.3"))
 ORDER = os.environ.get("CARBONARA_ORDER", "make me a carbonara")
+OLLAMA_URL = os.environ.get("CARBONARA_OLLAMA_URL", "http://localhost:11434")
 STREAM_DELAY = float(os.environ.get("CARBONARA_STREAM_DELAY", "0.0"))
 # ------------------------------------------------------------------------------
 
@@ -44,12 +45,14 @@ GREEN = "\033[92m"
 GREY = "\033[90m"
 RESET = "\033[0m"
 
+ollama_client = ollama.Client(host=OLLAMA_URL)
+
 
 # --- helpers -----------------------------------------------
 
 
 def llm(system: str, user: str) -> str:
-    response = ollama.chat(
+    response = ollama_client.chat(
         model=MODEL,
         options={"temperature": TEMPERATURE},
         messages=[
@@ -62,7 +65,7 @@ def llm(system: str, user: str) -> str:
 
 def llm_stream(system: str, user: str) -> str:
     """Stream tokens to stdout as they arrive. Returns the full text."""
-    stream = ollama.chat(
+    stream = ollama_client.chat(
         model=MODEL,
         options={"temperature": TEMPERATURE},
         messages=[

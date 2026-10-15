@@ -3,7 +3,8 @@
 import sys
 from pathlib import Path
 
-from carbonara import environ, registry
+from carbonara import cli_cook_with, environ, registry
+from carbonara.args import build_parser
 
 RUNNING = f"{sys.version_info.major}.{sys.version_info.minor}"
 
@@ -82,3 +83,12 @@ def test_overrides_drop_the_unset(monkeypatch):
     collected = overrides(Args())
     assert collected["CARBONARA_ORDER"] == "feed six"
     assert collected["CARBONARA_MODEL"] is None
+
+
+def test_a_venv_cook_hands_every_stack_the_ollama_url(monkeypatch):
+    """OLLAMA_HOST reaches the stack as CARBONARA_OLLAMA_URL, for every stack."""
+    monkeypatch.setenv("OLLAMA_HOST", "10.0.0.5:4242")
+    args = build_parser().parse_args(["cook-with", "crewai"])
+    assert cli_cook_with.overrides(args)["CARBONARA_OLLAMA_URL"] == (
+        "http://10.0.0.5:4242"
+    )

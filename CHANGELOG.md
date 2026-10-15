@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-15
+
+### Changed
+
+- The pinned requirements are refreshed: crewai 1.15.28, langgraph 1.2.15, and
+  LiteLLM 1.105.1 under smolagents. An existing install picks them up with
+  `carbonara prep STACK`.
+
+### Fixed
+
+- smolagents no longer fetches LiteLLM's price list from GitHub on every run.
+  `LITELLM_LOCAL_MODEL_COST_MAP` joins the telemetry switches.
+- langgraph's pinned set no longer carries the `black` formatter.
+- crewai and smolagents follow `OLLAMA_HOST`. Every stack now reads its Ollama URL
+  from `CARBONARA_OLLAMA_URL`.
+
 ## [0.2.1] - 2026-09-15
 
 ### Added

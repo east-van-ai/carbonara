@@ -1,8 +1,7 @@
 # DESIGN
 
 Design notes for `carbonara`. Decisions and the reasoning under them. The
-README draws the finished shape; this file says why that shape and not another.
-The command surface, and the decisions made about it, live in CLI.md.
+command surface, and the decisions made about it, live in CLI.md.
 
 ## What this consolidates
 
@@ -23,7 +22,7 @@ is the single entry point over all four.
 
 This is not a preference. `crewai` declares `requires-python = "<3.14,>=3.10"`,
 an explicit upper bound rather than an untested gap, so 3.14 is refused at
-install time. Checked against 1.15.17 on 2026-08-26.
+install time. Checked against 1.15.28 on 2026-10-15.
 
 This is not a dependency conflict. It is an interpreter conflict, and no
 arrangement of extras, markers, or resolver hints spans it. One process cannot
@@ -94,16 +93,19 @@ imports another.
 
 ## Configuring a stack across the subprocess boundary
 
-Each demo currently carries its model, temperature, and stream delay as
-literals at the top of the file, meant to be edited live during a talk. The CLI
-needs to set the same knobs, and it cannot set them by import.
+Each demo carries its model, temperature, and order as literals at the top of
+the file, meant to be edited live during a talk. The CLI needs to set the same
+knobs, and it cannot set them by import.
 
 They pass as environment variables: `CARBONARA_MODEL`,
-`CARBONARA_TEMPERATURE`, `CARBONARA_STREAM_DELAY`, and `CARBONARA_ORDER`. Each
-stack reads its own with a default equal to the literal it carries today, so a
-stack script still runs correctly on its own with no environment set. The demo
-stays editable by hand, which was the point of putting those literals at the
-top in the first place.
+`CARBONARA_TEMPERATURE`, `CARBONARA_ORDER`, `CARBONARA_STREAM_DELAY`, and
+`CARBONARA_OLLAMA_URL`. Each stack reads them with its literal as the default,
+so a stack script still runs correctly on its own with no environment set. The
+demo stays editable by hand, which is the point of keeping those literals at
+the top.
+
+`CARBONARA_STREAM_DELAY` is read by `no-framework` alone. It is the one stack
+with a token loop of its own to slow down.
 
 ## The expeditor's plan survives a decorated answer
 
@@ -133,11 +135,11 @@ importing another, which is the comparison this repository exists to make.
 
 ## Telemetry is off unless it is asked for
 
-Three of the four stacks phone home by default. The README promises the
-opposite, and a demo run in front of an audience is the worst possible place
-to discover otherwise.
+Three of the four stacks phone home by default. The demo promises to run
+entirely on the user's own machine, and a demo run in front of an audience is
+the worst possible place to discover otherwise.
 
-What is actually there, in `crewai` 1.14.7:
+What is actually there, in `crewai` 1.15.28:
 
 - Anonymous telemetry posts to `https://telemetry.crewai.com:4319/v1/traces`.
   It is always on and it never asks. Any of `OTEL_SDK_DISABLED`,
@@ -148,6 +150,10 @@ What is actually there, in `crewai` 1.14.7:
   `trace_consent` in `.crewai_user.json`.
 
 `smolagents` reaches Hugging Face and honours `HF_HUB_DISABLE_TELEMETRY`.
+Through LiteLLM, it also fetches a price list from GitHub on every run, unless
+`LITELLM_LOCAL_MODEL_COST_MAP` is set. It is not telemetry, and it is still a
+call nobody asked for.
+
 `langgraph` honours `LANGCHAIN_TRACING_V2` and `LANGSMITH_TRACING`, both of
 which need a key and are off unless set. The no-framework stack talks to
 nothing but Ollama, which is the point of it.
@@ -161,29 +167,29 @@ command was run. Declining in one directory and running from another asks
 again, and for a tool installed with `pipx` and run from anywhere, that means
 the question never stays answered.
 
-Tracing has no off switch in the environment. `CREWAI_TRACING_ENABLED` is
-read as `in ("true", "1")`, so it can only turn tracing on. Nothing set there
-turns it off. The file is the only control, and the check is
-`data.get("trace_consent", False) is not False`, an identity comparison, so
-only a literal JSON `false` disables it. A `null` left in that slot enables
-tracing.
+Tracing itself can be switched off in the environment, with
+`CREWAI_TRACING_ENABLED` set to `false` or `OTEL_SDK_DISABLED` set to `true`.
+The first-run prompt is the worse half. It reads the consent file before it
+asks, and the check there is `data.get("trace_consent", False) is not False`,
+an identity comparison. Only a literal JSON `false` counts as a no. A `null`
+left in that slot enables tracing.
 
 ### The decision
 
-carbonara sets every known telemetry switch to off before it runs any stack,
+`carbonara` sets every known telemetry switch to off before it runs any stack,
 and pins `CREWAI_STORAGE_DIR` to a fixed name so the answer stops depending on
 where the user is standing. `--telemetry` on `cook-with` leaves all of it unset,
 so upstream defaults apply and the frameworks behave as their own
 documentation says.
 
-Opt-in rather than opt-out, because the promise in the README is the stronger
-commitment and because the alternative is a surprise network call during a
-talk.
+Opt-in rather than opt-out, because staying on the user's machine is the
+stronger commitment and because the alternative is a surprise network call
+during a talk.
 
-Tracing needs one more step, since no environment variable can disable it.
-carbonara writes `trace_consent: false` into the consent file when the key is
-absent, and never overwrites an answer already there. So the prompt never
-appears, and a deliberate yes recorded earlier still stands.
+The prompt needs one more step, since it reads the file rather than the
+environment. `carbonara` writes `trace_consent: false` into the consent file
+when the key is absent, and never overwrites an answer already there. So the
+prompt never appears, and a deliberate yes recorded earlier still stands.
 
 The alternative was to leave the prompt alone and only fix the storage key, so
 the question is asked once and the answer sticks. It is the more transparent
@@ -206,7 +212,7 @@ would buy nothing and cost the one thing worth keeping, which is that the
 command, the repository, and the package all answer to the same word.
 
 The install line names the repository rather than the package index, so nobody
-following the README lands on the placeholder.
+following it lands on the placeholder.
 
 ## Layout
 

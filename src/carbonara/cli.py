@@ -47,7 +47,7 @@
 #
 #    carbonara silences all three before it runs anything. Every switch
 #    they honour goes off, and crewai's tracing prompt is answered with a
-#    no, which no environment variable can do. `carbonara list` shows
+#    no in its own consent file. `carbonara list` shows
 #    which stack is which. --telemetry hands them back their own
 #    defaults.
 #

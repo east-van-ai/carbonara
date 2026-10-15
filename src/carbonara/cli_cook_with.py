@@ -47,6 +47,7 @@ def overrides(args):
         "CARBONARA_MODEL": args.model,
         "CARBONARA_TEMPERATURE": args.temperature,
         "CARBONARA_STREAM_DELAY": args.stream_delay,
+        "CARBONARA_OLLAMA_URL": environ.ollama_base_url(),
     }
 
 
