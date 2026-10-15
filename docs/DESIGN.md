@@ -135,61 +135,33 @@ importing another, which is the comparison this repository exists to make.
 
 ## Telemetry is off unless it is asked for
 
-Three of the four stacks phone home by default. The demo promises to run
-entirely on the user's own machine, and a demo run in front of an audience is
-the worst possible place to discover otherwise.
+Two of the four stacks call home with their own defaults: crewai sends its own
+telemetry, and smolagents fetches a price list through LiteLLM. CALLS-HOME.md
+holds the measurement: what each stack reaches, which library makes the call,
+the switch that stops it, and how to measure it again. This section holds the
+decision.
 
-What is actually there, in `crewai` 1.15.28:
-
-- Anonymous telemetry posts to `https://telemetry.crewai.com:4319/v1/traces`.
-  It is always on and it never asks. Any of `OTEL_SDK_DISABLED`,
-  `CREWAI_DISABLE_TELEMETRY`, or `CREWAI_DISABLE_TRACKING` set to `true`
-  turns it off.
-- Execution tracing is separate. It prompts after the first run completes,
-  and on yes it uploads that run's traces. The answer is stored as
-  `trace_consent` in `.crewai_user.json`.
-
-`smolagents` reaches Hugging Face and honours `HF_HUB_DISABLE_TELEMETRY`.
-Through LiteLLM, it also fetches a price list from GitHub on every run, unless
-`LITELLM_LOCAL_MODEL_COST_MAP` is set. It is not telemetry, and it is still a
-call nobody asked for.
-
-`langgraph` honours `LANGCHAIN_TRACING_V2` and `LANGSMITH_TRACING`, both of
-which need a key and are off unless set. The no-framework stack talks to
-nothing but Ollama, which is the point of it.
-
-Two upstream details make this worse than a default nobody likes.
-
-The consent file is keyed to the working directory. `crewai_core.paths`
-resolves its storage name as `os.environ.get("CREWAI_STORAGE_DIR",
-Path.cwd().name)`, so the answer is filed under the basename of wherever the
-command was run. Declining in one directory and running from another asks
-again, and for a tool installed with `pipx` and run from anywhere, that means
-the question never stays answered.
-
-Tracing itself can be switched off in the environment, with
-`CREWAI_TRACING_ENABLED` set to `false` or `OTEL_SDK_DISABLED` set to `true`.
-The first-run prompt is the worse half. It reads the consent file before it
-asks, and the check there is `data.get("trace_consent", False) is not False`,
-an identity comparison. Only a literal JSON `false` counts as a no. A `null`
-left in that slot enables tracing.
+The demo promises to run entirely on the user's own machine, and a demo run in
+front of an audience is the worst possible place to discover otherwise.
 
 ### The decision
 
-`carbonara` sets every known telemetry switch to off before it runs any stack,
-and pins `CREWAI_STORAGE_DIR` to a fixed name so the answer stops depending on
-where the user is standing. `--telemetry` on `cook-with` leaves all of it unset,
-so upstream defaults apply and the frameworks behave as their own
-documentation says.
+`carbonara` sets every known telemetry switch to off before it runs any stack.
+crewai files its consent answer under the name of the working directory, so
+`carbonara` also pins `CREWAI_STORAGE_DIR` to a fixed name, and the answer
+stops depending on where the user is standing. `--telemetry` on `cook-with`
+leaves all of it unset, so upstream defaults apply and the frameworks behave
+as their own documentation says.
 
 Opt-in rather than opt-out, because staying on the user's machine is the
 stronger commitment and because the alternative is a surprise network call
 during a talk.
 
-The prompt needs one more step, since it reads the file rather than the
-environment. `carbonara` writes `trace_consent: false` into the consent file
-when the key is absent, and never overwrites an answer already there. So the
-prompt never appears, and a deliberate yes recorded earlier still stands.
+crewai's first-run tracing prompt needs one more step, since it reads a
+consent file rather than the environment. `carbonara` writes
+`trace_consent: false` into the consent file when the key is absent, and never
+overwrites an answer already there. So the prompt never appears, and a
+deliberate yes recorded earlier still stands.
 
 The alternative was to leave the prompt alone and only fix the storage key, so
 the question is asked once and the answer sticks. It is the more transparent
@@ -199,6 +171,10 @@ mid-demo, is not a fair place to ask anyone anything.
 None of this is hidden. `carbonara list` carries a CALLS HOME column naming
 which stacks would reach the network, and turning them loose again is one
 documented flag.
+
+The column counts what a stack does, observed with the frameworks' own
+defaults. What a stack could do, given a setting the demo never makes, is
+recorded in CALLS-HOME.md and never counted.
 
 ## The PyPI name is squatted, and it does not matter
 

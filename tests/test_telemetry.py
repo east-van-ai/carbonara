@@ -1,11 +1,13 @@
 """Telemetry is off unless it is asked for.
 
-Three of the four stacks phone home by default and carbonara promises they do
-not, so the promise is pinned here rather than left to a code review.
+Two of the four stacks call home with their own defaults, and carbonara
+promises they do not, so the promise is pinned here rather than left to a code
+review.
 """
 
 import json
 import re
+from pathlib import Path
 
 import pytest
 
@@ -98,13 +100,12 @@ def test_an_existing_answer_is_never_overwritten(tmp_path):
     assert kept["user_id"] == "abc"
 
 
-def test_only_the_no_framework_stack_stays_home():
-    """Three of the four reach the network. The one that does not has no framework."""
-    assert registry.find("no-framework").phones_home is False
+def test_the_stacks_that_call_home_are_the_measured_ones():
+    """crewai and smolagents, as measured. langgraph only could, with tracing on."""
+    assert registry.PHONES_HOME == {"crewai", "smolagents"}
     assert {s.name for s in registry.stacks() if s.phones_home} == set(
         registry.PHONES_HOME
     )
-    assert len(registry.PHONES_HOME) == 3
 
 
 def test_every_stack_that_phones_home_is_a_real_stack():
@@ -128,6 +129,25 @@ def test_list_shows_which_stacks_call_home(invoke):
 
     assert rows["no-framework"] == "no"
     assert rows["crewai"] == "yes"
+    assert rows["langgraph"] == "no"
+    assert rows["smolagents"] == "yes"
     assert sorted(name for name, calls in rows.items() if calls == "yes") == sorted(
         registry.PHONES_HOME
     )
+
+
+def test_calls_home_doc_agrees_with_the_registry():
+    """The measured table and PHONES_HOME name the same stacks.
+
+    The doc is where the measurement lives and the registry is what list
+    prints, so a stack added to one and not the other would be a claim with
+    nothing behind it.
+    """
+    doc = (Path(__file__).parent.parent / "docs" / "CALLS-HOME.md").read_text()
+    section = doc.split("## What each stack does")[1].split("\n## ")[0]
+    reached = set()
+    for line in section.splitlines():
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if cells[0] in registry.NAMES and cells[1] != "nothing":
+            reached.add(cells[0])
+    assert reached == registry.PHONES_HOME

@@ -25,11 +25,12 @@ SUMMARIES = {
 #: shows the mechanism with nothing in front of it.
 NAMES = ("no-framework", "crewai", "langgraph", "smolagents")
 
-#: The stacks that reach the network on their own account, with no help from
-#: the demo. Three of the four, and the one that does not is the one with no
-#: framework under it. That is a fact about frameworks rather than about this
-#: tool, which is what makes it worth printing rather than burying.
-PHONES_HOME = frozenset({"crewai", "langgraph", "smolagents"})
+#: The stacks that reach the network on their own account, run with the
+#: frameworks' own defaults. Measured, not read: every hostname a cook looks up
+#: is logged, and docs/CALLS-HOME.md holds the runs. crewai sends its own
+#: telemetry. smolagents' call comes from LiteLLM, a library underneath it.
+#: langgraph could, once LangSmith tracing is turned on, and is not counted.
+PHONES_HOME = frozenset({"crewai", "smolagents"})
 
 
 class Stack(NamedTuple):

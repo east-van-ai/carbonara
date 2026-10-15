@@ -11,7 +11,7 @@ projects' worth of code already in it.
 | Stack | What it is | Calls home |
 | --- | --- | --- |
 | `crewai` | Role-based agents with a crew and tasks | yes |
-| `langgraph` | A state graph, nodes and edges | yes |
+| `langgraph` | A state graph, nodes and edges | no |
 | `smolagents` | Minimal agents over LiteLLM | yes |
 | `no-framework` | Plain Python. A prompt and a registry | no |
 
@@ -31,14 +31,23 @@ Run the four back to back and the differences between them stop being abstract.
 That is the question, and it is the only reason to build the same thing four
 times. Two of the answers were news.
 
-The first is the calls-home column above. Three of the four reach the network
-on their own account, and none of them asks first. The one that stays on your
-machine is the one with no framework under it.
+The first is the calls-home column above. Two of the four reach the network
+on their own account, and neither asks first. Only one of those calls is
+telemetry, and it is crewai's own.
 
-Someone who knows `crewai` well knows where its telemetry setting lives. What
-they cannot see from inside `crewai` is that the plain Python version has no
-setting at all, because it has nothing that would place the call. That only
-shows up with all four side by side.
+The other is not smolagents' at all. smolagents reaches its model through
+LiteLLM, a library underneath it. LiteLLM fetches a price list from GitHub
+every time it loads. Nobody had listed that call, and a local model has no
+price to look up.
+
+That column is measured, not read. Every hostname each stack looked up while
+it cooked was logged, along with the library that asked. Reading the
+documentation gives a different answer. langgraph can send traces to
+LangSmith, but only once someone turns that on, so in this demo it stays home.
+
+So the lesson is not that frameworks phone home. The dependency tree does, and
+from inside any one framework you cannot see which part. That only shows up
+with all four side by side, and a log.
 
 The second shows up when you try to install them together. `crewai` declares
 `requires-python <3.14`. The other three want 3.14. Nothing warns you until
@@ -48,7 +57,7 @@ frameworks any more, you are negotiating with a resolver.
 Plenty of people are expert in a framework. Far fewer are expert in frameworks,
 plural. That gap is most of what this repository is for.
 
-`carbonara` silences all three callers before anything starts, and gives every
+`carbonara` silences both callers before anything starts, and gives every
 stack an interpreter of its own. Both are below.
 
 If that made you want to read them rather than run them, they are four files,
@@ -126,8 +135,8 @@ environment is ready.
 Everything runs on your own machine. No API keys, no cloud, no per-token
 billing while you rehearse.
 
-That includes telemetry. Three of the four frameworks phone home by default,
-and one of them asks mid-demo whether it may upload the run. `carbonara` turns
+That includes telemetry. Two of the four stacks phone home by default, and
+one of them asks mid-demo whether it may upload the run. `carbonara` turns
 every switch they honour off before it starts anything, and declines the
 tracing prompt so it never interrupts. Nothing here is hidden: `carbonara list`
 says so, and `--telemetry` on a cook hands the frameworks back their own
@@ -156,6 +165,13 @@ Then open `src/carbonara/stacks/`. Four directories, one file each, same
 kitchen four ways. `no-framework` is the one to read first, because it shows
 the mechanism with nothing in front of it, and the other three are best read as
 answers to it.
+
+## More documentation
+
+- [CLI](docs/CLI.md): the command line, word by word
+- [Design](docs/DESIGN.md): the interpreter split, the decisions, and the reasons
+- [Calls home](docs/CALLS-HOME.md): who reaches the network, measured
+- [Changelog](CHANGELOG.md): project history and releases
 
 ## Use of AI
 

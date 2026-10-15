@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-15
+
+### Added
+
+- `docs/CALLS-HOME.md` records which stacks reach the network, which library makes
+  each call, and the switch that stops it, all measured, with the way to measure it
+  again.
+- The README links the other documents from a More documentation section.
+
+### Fixed
+
+- `carbonara list`, the banner, and the README count two stacks that call home,
+  crewai and smolagents, as measured. langgraph calls home only once LangSmith
+  tracing is on.
+
 ## [0.2.2] - 2026-10-15
 
 ### Changed

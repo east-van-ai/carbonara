@@ -13,6 +13,7 @@ src/carbonara/stacks/*/requirements.txt
 src/carbonara/stacks/*/requirements-pinned.txt
 tests/*.py
 CHANGELOG.md
+docs/CALLS-HOME.md
 docs/CLI.md
 docs/DESIGN.md
 LICENSE

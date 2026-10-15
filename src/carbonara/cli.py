@@ -39,17 +39,17 @@
 #
 # Calling home:
 #
-#    Three of the four stacks reach the network on their own account, and
-#    none of them asks first. no-framework is the only one that stays on
-#    the machine. That is a fact about frameworks rather than about this
-#    demo, and it is the most interesting thing the four have to say
-#    about each other.
+#    Two of the four stacks reach the network on their own account, and
+#    neither asks first. crewai sends its own telemetry. smolagents
+#    fetches a price list through LiteLLM, a library underneath it.
+#    langgraph stays home until someone turns on LangSmith tracing,
+#    and no-framework has nothing that could call at all. It is the most
+#    interesting thing the four have to say about each other.
 #
-#    carbonara silences all three before it runs anything. Every switch
-#    they honour goes off, and crewai's tracing prompt is answered with a
-#    no in its own consent file. `carbonara list` shows
-#    which stack is which. --telemetry hands them back their own
-#    defaults.
+#    carbonara silences both before it runs anything. Every switch they
+#    honour goes off, and crewai's tracing prompt is answered with a no
+#    in its own consent file. `carbonara list` shows which stack is
+#    which. --telemetry hands them back their own defaults.
 #
 # Run prep or cook-with with nothing after it for its own documentation,
 # including the options it takes:
