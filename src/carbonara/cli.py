@@ -24,6 +24,7 @@
 #    carbonara prep STACK [--latest] [--docker]
 #    carbonara cook-with STACK [--order TEXT] [--model NAME] [--temperature N]
 #    carbonara cook-with STACK [--telemetry] [--docker]
+#    carbonara clean STACK [--docker]
 #
 # Commands:
 #
@@ -37,6 +38,9 @@
 #    cook-with STACK     cook the demo with that stack, in a container
 #                        with --docker. Preps its station first if this
 #                        is its first cook.
+#    clean STACK         remove that stack's environment, or its Docker
+#                        image and the locked network with --docker, so
+#                        the next prep starts from scratch.
 #
 # STACK is one of: no-framework, crewai, langgraph, smolagents.
 #
@@ -54,11 +58,12 @@
 #    in its own consent file. `carbonara list` shows which stack is
 #    which. --telemetry hands them back their own defaults.
 #
-# Run prep or cook-with with nothing after it for its own documentation,
+# Run prep, cook-with, or clean with nothing after it for its own documentation,
 # including the options it takes:
 #
 #    carbonara prep
 #    carbonara cook-with
+#    carbonara clean
 #
 # list takes no STACK, so bare `carbonara list` runs rather than
 # documenting itself.
@@ -84,7 +89,7 @@
 
 import sys
 
-from . import cli_cook_with, cli_list, cli_prep, registry
+from . import cli_clean, cli_cook_with, cli_list, cli_prep, registry
 from .args import EXIT_ARGPARSE, EXIT_ERROR, EXIT_OK, build_parser, version_line
 
 __all__ = ["EXIT_ARGPARSE", "EXIT_ERROR", "EXIT_OK", "main"]
@@ -95,6 +100,7 @@ COMMANDS = {
     "list": cli_list,
     "prep": cli_prep,
     "cook-with": cli_cook_with,
+    "clean": cli_clean,
 }
 
 # list acts on the whole registry, so there is no argument for it to be

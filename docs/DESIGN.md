@@ -205,6 +205,7 @@ src/carbonara/
     cli_list.py        one module per command word, each holding that
     cli_prep.py        command's own documentation, USAGE line, and run()
     cli_cook_with.py
+    cli_clean.py
     registry.py        the four stacks as data: name, interpreter, paths
     environ.py         interpreter discovery, venv building, readiness
     containers.py      Docker mode: images, the locked network, the relay

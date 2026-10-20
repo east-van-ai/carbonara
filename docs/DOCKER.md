@@ -49,7 +49,9 @@ and never learns where Ollama really is.
 
 The relay belongs to one cook. It starts before the stack and is removed after,
 including on Ctrl-C, so a cook leaves no container behind. The network costs
-nothing and stays.
+nothing and stays. `carbonara clean STACK --docker` removes it with the stack's
+image, and the next locked cook makes it again. The relay image stays: it is
+pinned by digest, so a fresh pull would bring back the same bytes.
 
 The relay's name on the locked network is `ollama.internal`, and the suffix is
 load-bearing. Ollama checks the `Host` header of every request and answers 403

@@ -11,6 +11,7 @@ carbonara list
 carbonara prep STACK [--latest] [--docker]
 carbonara cook-with STACK [--order TEXT] [--model NAME] [--temperature N]
 carbonara cook-with STACK [--stream-delay N] [--telemetry] [--docker]
+carbonara clean STACK [--docker]
 carbonara version
 ```
 
@@ -95,6 +96,25 @@ It is a flag, not a command word, because it changes how a cook runs, not what
 the command does. `list` does not take it. `list` reports both modes side by
 side, ENVIRONMENT and IMAGE, without being asked, so there is nothing for the
 flag to choose.
+
+## `clean`
+
+`clean` removes one stack's venv, so the next `prep` builds from scratch
+rather than on top of what is there. Under `--docker` it removes the stack's
+image and the locked network instead. The network outlives every cook, and this
+is the way to remove it. The relay image stays, since a fresh pull brings back
+the same bytes.
+
+It takes one stack and asks nothing. A form that cleans every stack would put
+four stations behind one typo, and four calls cost little. Something already
+gone is reported as `nothing to clean`, exit 0, so a second run changes nothing.
+
+Docker refuses to remove an image or the network while a cook is using it.
+`clean` passes the refusal on and exits 1. It never forces a removal. Each
+`docker` command it runs is printed first, as a cook's is. A venv is removed in
+Python, so `clean` prints the path it removed, not a shell line.
+
+crewai's consent file is never touched.
 
 ## A cook shows its command first
 

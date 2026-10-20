@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-10-20
+
+### Added
+
+- `carbonara clean STACK` removes a stack's venv, so `prep` builds it from scratch.
+  `--docker` removes its image and the locked network instead.
+
 ## [0.2.5] - 2026-10-20
 
 ### Changed

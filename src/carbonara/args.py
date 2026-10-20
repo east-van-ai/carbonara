@@ -110,6 +110,16 @@ def build_parser():
         help="cook in a Docker container instead of a virtual environment",
     )
 
+    clean = commands.add_parser(
+        "clean", allow_abbrev=False, help="clean a stack's station"
+    )
+    clean.add_argument("stack", nargs="?", choices=registry.NAMES)
+    clean.add_argument(
+        "--docker",
+        action="store_true",
+        help="remove the Docker image and the locked network instead",
+    )
+
     commands.add_parser(
         "version", allow_abbrev=False, help="print the installed version and exit"
     )

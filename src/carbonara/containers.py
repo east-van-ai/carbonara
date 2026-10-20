@@ -94,6 +94,16 @@ def network_argv():
     return ["docker", "network", "create", "--internal", NETWORK]
 
 
+def image_rm_argv(stack):
+    """Return the command that removes this stack's image."""
+    return ["docker", "image", "rm", image(stack)]
+
+
+def network_rm_argv():
+    """Return the command that removes the locked network."""
+    return ["docker", "network", "rm", NETWORK]
+
+
 def relay_argv(name):
     """Return the command that starts a relay forwarding one port to Ollama.
 
@@ -209,12 +219,17 @@ def quietly(argv, what):
     return done.returncode == 0
 
 
-def ensure_network():
-    """Create the locked network unless it is already there."""
+def network_exists():
+    """Report whether the locked network is there."""
     inspected = subprocess.run(
         ["docker", "network", "inspect", NETWORK], capture_output=True, check=False
     )
-    if inspected.returncode == 0:
+    return inspected.returncode == 0
+
+
+def ensure_network():
+    """Create the locked network unless it is already there."""
+    if network_exists():
         return True
     return quietly(network_argv(), f"create the {NETWORK} network")
 

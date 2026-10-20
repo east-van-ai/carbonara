@@ -19,7 +19,7 @@ def test_bare_tool_prints_the_banner(invoke):
     assert "--version" not in out
 
 
-@pytest.mark.parametrize("command", ["prep", "cook-with"])
+@pytest.mark.parametrize("command", ["prep", "cook-with", "clean"])
 def test_bare_command_word_prints_its_own_doc(invoke, command):
     """A command word alone prints that command's documentation, exit 0."""
     code, out, _ = invoke(command)
@@ -44,10 +44,11 @@ def test_list_rejects_a_stray_word(invoke):
     assert "Usage: carbonara list" in err
 
 
-@pytest.mark.parametrize("command", ["prep", "cook-with"])
+@pytest.mark.parametrize("command", ["prep", "cook-with", "clean"])
 def test_missing_stack_is_an_error_not_help(invoke, command):
     """Once any other token is present, a missing STACK is a slip, exit 1."""
-    code, _, err = invoke(command, "--latest" if command == "prep" else "--order=x")
+    flag = {"prep": "--latest", "cook-with": "--order=x", "clean": "--docker"}[command]
+    code, _, err = invoke(command, flag)
     assert code == EXIT_ERROR
     assert "needs STACK" in err
     assert f"Usage: carbonara {command}" in err
@@ -115,6 +116,8 @@ def test_version_rejects_a_stray_word(invoke):
         ("version", "--version"),
         ("version", "--latest"),
         ("list", "--docker"),
+        ("clean", "nosuch"),
+        ("clean", "crewai", "--latest"),
     ],
     ids=[
         "unknown command",
@@ -127,6 +130,8 @@ def test_version_rejects_a_stray_word(invoke):
         "version on the version command",
         "unknown flag on version",
         "docker on list",
+        "unknown stack on clean",
+        "latest on clean",
     ],
 )
 def test_argparse_keeps_the_vocabulary_it_owns(invoke, arguments):
@@ -135,9 +140,9 @@ def test_argparse_keeps_the_vocabulary_it_owns(invoke, arguments):
     assert code == EXIT_ARGPARSE
 
 
-@pytest.mark.parametrize("command", ["prep", "cook-with"])
+@pytest.mark.parametrize("command", ["prep", "cook-with", "clean"])
 def test_docker_is_a_flag_on_the_stack_commands(command):
-    """--docker sits after STACK on prep and cook-with, and is off by default."""
+    """--docker sits after STACK on every stack command, and is off by default."""
     parser = build_parser()
     assert parser.parse_args([command, "crewai", "--docker"]).docker is True
     assert parser.parse_args([command, "crewai"]).docker is False
