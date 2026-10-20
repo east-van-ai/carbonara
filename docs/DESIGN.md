@@ -70,29 +70,10 @@ unexpected should be caught rather than trusted.
 ## Docker, a second way to run
 
 `--docker` runs a stack in a container instead of a virtual environment. The
-image does the venv's job. Each stack gets one, `carbonara-<stack>`, built
-on the official `python:<version>-slim` image for the version its
-`python-version` file names. Its requirements install straight into that
-Python. A venv inside the image would only repeat the separation the image
-already gives.
-
-One Dockerfile builds all four, and the image holds dependencies only. The
-script is mounted read-only at run time, the way a venv holds dependencies and
-the script comes from the package. So editing a stack script needs no rebuild,
-in either mode.
-
-Ollama stays on the host. Docker on macOS cannot reach the GPU, so a model in
-a container would run on the CPU alone. Starting a container costs about a
-quarter of a second, so a cook takes as long in Docker as in a venv. The
-model is the time.
-
-Telemetry is handled exactly as in a venv: the same switches, and the same
-consent file, mounted where crewai looks for it on Linux. The container is on
-Docker's default network, with a route out. So Docker mode makes no stronger
-promise about calling home than venv mode does.
-
-Untested on Linux, where Ollama listens on `127.0.0.1` by default, out of a
-container's reach.
+image does the venv's job, Ollama stays on the host, and the container sits on
+a locked network with no route out. A relay forwards Ollama's port, and
+nothing else gets through. DOCKER.md holds the design, the relay, and what the
+lock cannot stop.
 
 ## Stacks are data, not packages
 
@@ -226,7 +207,7 @@ src/carbonara/
     cli_cook_with.py
     registry.py        the four stacks as data: name, interpreter, paths
     environ.py         interpreter discovery, venv building, readiness
-    containers.py      Docker mode: images, the run command, readiness
+    containers.py      Docker mode: images, the locked network, the relay
     docker/            the one Dockerfile, shipped as package data
     stacks/            the four implementations, shipped as package data
 ```

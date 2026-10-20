@@ -103,12 +103,38 @@ def test_a_venv_cook_with_telemetry_prints_no_switch(invoke, ran, built):
     assert not any(token.split("=")[0] in environ.TELEMETRY_OFF for token in printed)
 
 
-def test_a_docker_cook_prints_what_it_runs(invoke, ran, built):
-    """In Docker mode the print is the docker run argv itself."""
+def every_printed_argv(out):
+    """Read back every command carbonara printed, in order."""
+    blocks = out.split("carbonara: running\n")[1:]
+    return [printed_argv("carbonara: running\n" + block) for block in blocks]
+
+
+def test_a_locked_docker_cook_prints_the_relay_the_run_and_the_cleanup(
+    invoke, ran, built
+):
+    """The printed lines, pasted in order, rebuild the lock, cook, and tidy up."""
     code, out, _ = invoke("cook-with", "crewai", "--docker")
     assert code == 0
-    assert printed_argv(out) == ran[-1]
+    printed = every_printed_argv(out)
+    # The network inspect answers 0 under the stub, so no create is printed.
+    assert printed == ran[1:]
+    assert [argv[:3] for argv in printed] == [
+        ["docker", "run", "--detach"],
+        ["docker", "network", "connect"],
+        ["docker", "run", "--rm"],
+        ["docker", "rm", "--force"],
+    ]
+    assert containers.NETWORK in printed[2]
+    assert printed[-1][-1] == printed[0][printed[0].index("--name") + 1]
+
+
+def test_an_open_docker_cook_prints_only_the_run(invoke, ran, built):
+    """--telemetry needs no relay, so the print is the docker run alone."""
+    code, out, _ = invoke("cook-with", "crewai", "--docker", "--telemetry")
+    assert code == 0
+    assert every_printed_argv(out) == ran
     assert ran[-1][:2] == ["docker", "run"]
+    assert "--network" not in ran[-1]
 
 
 def test_prep_docker_prints_the_build(invoke, ran):

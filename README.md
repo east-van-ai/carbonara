@@ -131,7 +131,8 @@ carbonara cook-with crewai --docker
 ```
 
 Each stack gets an image of its own, and the model stays in Ollama on your
-machine, so it runs just as fast.
+machine, so it runs just as fast. The container sits on a locked network with
+no way out. One relay reaches Ollama, and nothing else gets through.
 
 ## Requirements
 
@@ -181,6 +182,7 @@ answers to it.
 
 - [CLI](docs/CLI.md): the command line, word by word
 - [Design](docs/DESIGN.md): the interpreter split, the decisions, and the reasons
+- [Docker](docs/DOCKER.md): the locked network, the relay, and what it cannot stop
 - [Calls home](docs/CALLS-HOME.md): who reaches the network, measured
 - [Changelog](CHANGELOG.md): project history and releases
 

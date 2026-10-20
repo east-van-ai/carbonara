@@ -87,7 +87,9 @@ against current releases.
 
 `--docker` on `prep` builds the stack's image instead of its venv. On
 `cook-with` it cooks in a container, building the image first if there is
-none. `--latest` and `--telemetry` mean the same thing in both modes.
+none. `--latest` means the same thing in both modes. So does `--telemetry`:
+it hands the frameworks their own defaults, and under `--docker` one of those
+defaults is an open network. Without it, the container is locked.
 
 It is a flag, not a command word, because it changes how a cook runs, not what
 the command does. `list` does not take it. `list` reports both modes side by
@@ -99,8 +101,10 @@ flag to choose.
 Before a stack starts, `cook-with` prints `carbonara: running` and the command
 it is about to run, one option per line, quoted for a shell. In a venv, that is
 an `env` line: the variables carbonara adds, then the interpreter and the
-script. Under `--docker`, it is the `docker run` line. An image build prints its
-`docker build` line the same way.
+script. Under `--docker`, it is the `docker run` line. A locked cook prints the
+relay's commands around it: the relay's start and its connection to the locked
+network before, and its removal after. An image build prints its `docker build`
+line the same way.
 
 It prints on every cook, with no flag to ask for it or to turn it off. Pasted
 into a shell, it cooks the same stack the same way, without carbonara.

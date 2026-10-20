@@ -77,7 +77,7 @@ def run(args):
         print(f"  {ollama.problem}")
         print(f"  try: {ollama.fix}")
     if docker.ok:
-        print("  docker is running, for --docker")
+        print("  docker is running; --docker cooks behind a locked network")
     else:
         print(f"  {docker.problem}")
         print(f"  try: {docker.fix}")

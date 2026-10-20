@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-10-20
+
+### Changed
+
+- `--docker` cooks behind a locked network, with a relay to Ollama as the only way
+  out, not on Docker's default network. `--telemetry` opens it. A locked cook prints
+  the relay's commands around the stack's.
+
+### Added
+
+- `docs/DOCKER.md` holds Docker mode, the lock, and a probe showing the relay passes
+  Ollama's whole API.
+
 ## [0.2.4] - 2026-10-20
 
 ### Added

@@ -13,8 +13,9 @@
 # Telemetry is off for every stack unless --telemetry says otherwise.
 #
 # --docker cooks in a container instead, built from the same pinned
-# requirements. It reaches Ollama on the host, and telemetry is handled
-# the same way as in a virtual environment.
+# requirements. The container sits on a locked network with no route
+# out, and reaches Ollama on the host through a relay. --telemetry opens
+# the network back up.
 #
 # Usage:
 #
@@ -36,8 +37,8 @@
 #                        trace down on fast hardware.
 #    --telemetry         leave the framework's own telemetry defaults
 #                        alone. Off by default.
-#    --docker            cook in a Docker container. Builds the
-#                        stack's image first if it has none.
+#    --docker            cook in a Docker container, behind a locked network.
+#                        Builds the stack's image first if it has none.
 """
 
 from . import containers, environ, registry

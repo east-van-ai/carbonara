@@ -155,6 +155,22 @@ A clean log is evidence, not proof. The logger sees only lookups made through
 Python's own resolver. A subprocess, a C library with a resolver of its own,
 or a connection to a hardcoded IP address would not show.
 
+## The lock, a second way to measure
+
+`cook-with STACK --docker` runs the stack on a network with no route out.
+DOCKER.md has the details. A locked cook that finishes proves the stack needed
+nothing from outside to cook, whatever it might have tried. The lock does not
+care how a call is made, so it covers what the logger misses: a subprocess, a
+resolver of its own, a hardcoded IP address.
+
+All four stacks cook to the end behind the lock, at the versions above,
+measured 2026-10-20.
+
+The two measurements answer different questions. The logger says what a stack
+reaches for, so the counts above come from it. The lock says the cook does not
+depend on any of it. Neither sees what Ollama fetches for a stack, since Ollama
+runs on the host.
+
 ## Use of AI
 
 Both the use of AI and its disclosure are deliberate. Code and documentation in

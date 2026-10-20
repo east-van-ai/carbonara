@@ -21,8 +21,21 @@ def env_of(argv):
     return dict(pair.split("=", 1) for pair in pairs)
 
 
+def test_a_locked_run_is_on_the_internal_network(crewai):
+    """No --telemetry means the network with no route out."""
+    argv = containers.run_argv(crewai)
+    assert argv[argv.index("--network") + 1] == containers.NETWORK
+
+
+def test_a_locked_run_reaches_ollama_through_the_relay(crewai, monkeypatch):
+    """The stack is handed the relay's alias, never the host's own name."""
+    monkeypatch.delenv("OLLAMA_HOST", raising=False)
+    url = env_of(containers.run_argv(crewai))["CARBONARA_OLLAMA_URL"]
+    assert url == "http://ollama.internal:11434"
+
+
 def test_a_cook_sets_every_switch(crewai):
-    """Without --telemetry, the switches go in as they do in venv mode."""
+    """The lock is a backstop. The switches go in as they do in venv mode."""
     seen = env_of(containers.run_argv(crewai))
     for key, value in environ.TELEMETRY_OFF.items():
         assert seen[key] == value
@@ -44,16 +57,51 @@ def test_telemetry_hands_back_the_defaults(crewai):
     assert not any(containers.CREWAI_STATE_IN_CONTAINER in token for token in argv)
 
 
-@pytest.mark.parametrize("telemetry", [False, True])
-def test_a_cook_is_on_the_default_network(crewai, telemetry):
-    """No network is named. The locked network is a later release."""
-    assert "--network" not in containers.run_argv(crewai, telemetry=telemetry)
+def test_telemetry_opens_the_network(crewai, monkeypatch):
+    """--telemetry runs on the default network, straight to the host."""
+    monkeypatch.delenv("OLLAMA_HOST", raising=False)
+    argv = containers.run_argv(crewai, telemetry=True)
+    assert "--network" not in argv
+    url = env_of(argv)["CARBONARA_OLLAMA_URL"]
+    assert url == "http://host.docker.internal:11434"
 
 
-def test_a_cook_can_name_the_host_on_linux(crewai):
+def test_an_open_cook_can_name_the_host_on_linux(crewai):
     """host.docker.internal is mapped explicitly, for Docker outside Desktop."""
-    argv = containers.run_argv(crewai)
+    argv = containers.run_argv(crewai, telemetry=True)
     assert argv[argv.index("--add-host") + 1] == "host.docker.internal:host-gateway"
+
+
+def test_the_network_is_internal():
+    """Internal is the whole lock."""
+    assert containers.network_argv() == [
+        "docker",
+        "network",
+        "create",
+        "--internal",
+        containers.NETWORK,
+    ]
+
+
+def test_the_relay_alias_is_one_ollama_accepts():
+    """Ollama answers 403 to a plain name. Docker Desktop hijacks the host's."""
+    assert containers.RELAY_ALIAS.endswith((".internal", ".localhost"))
+    assert containers.RELAY_ALIAS != "host.docker.internal"
+    argv = containers.connect_argv("relay")
+    assert argv[argv.index("--alias") + 1] == containers.RELAY_ALIAS
+    assert containers.NETWORK in argv
+
+
+def test_the_relay_forwards_one_port_to_the_host(monkeypatch):
+    """A loopback OLLAMA_HOST is the host, which a container calls by name."""
+    monkeypatch.setenv("OLLAMA_HOST", "127.0.0.1:4242")
+    argv = containers.relay_argv("relay")
+    assert argv[-2:] == [
+        "TCP-LISTEN:4242,fork,reuseaddr",
+        "TCP:host.docker.internal:4242",
+    ]
+    assert containers.RELAY_IMAGE in argv
+    assert "@sha256:" in containers.RELAY_IMAGE
 
 
 @pytest.mark.parametrize(
@@ -62,13 +110,13 @@ def test_a_cook_can_name_the_host_on_linux(crewai):
 def test_a_loopback_ollama_is_the_host(monkeypatch, ollama_host):
     """Loopback on the host is the host itself, seen from a container."""
     monkeypatch.setenv("OLLAMA_HOST", ollama_host)
-    assert containers.ollama_url() == "http://host.docker.internal:4242"
+    assert containers.ollama_target() == ("host.docker.internal", 4242)
 
 
 def test_a_remote_ollama_is_kept_as_is(monkeypatch):
     """Only loopback is translated. A named host is reached by name."""
     monkeypatch.setenv("OLLAMA_HOST", "http://gpu-box:11434")
-    assert containers.ollama_url() == "http://gpu-box:11434"
+    assert containers.ollama_target() == ("gpu-box", 11434)
 
 
 def test_overrides_cross_as_env_and_the_url_is_translated(crewai, monkeypatch):
@@ -76,7 +124,8 @@ def test_overrides_cross_as_env_and_the_url_is_translated(crewai, monkeypatch):
     monkeypatch.delenv("OLLAMA_HOST", raising=False)
     argv = containers.run_argv(
         crewai,
-        {
+        telemetry=True,
+        overrides={
             "CARBONARA_ORDER": "eggs",
             "CARBONARA_MODEL": None,
             "CARBONARA_OLLAMA_URL": "http://127.0.0.1:11434",

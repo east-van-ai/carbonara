@@ -17,6 +17,7 @@ tests/*.py
 CHANGELOG.md
 docs/CALLS-HOME.md
 docs/CLI.md
+docs/DOCKER.md
 docs/DESIGN.md
 LICENSE
 pyproject.toml
