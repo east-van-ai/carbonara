@@ -121,11 +121,15 @@ def test_list_shows_which_stacks_call_home(invoke):
 
     # Split on the two-space column gutter, since a cell can hold a phrase:
     # the environment column carries "not built" and "no python 3.12".
+    # The column is found by its heading, so a new column cannot shift it.
     rows = {}
+    column = None
     for line in out.splitlines():
         cells = re.split(r"\s{2,}", line.strip())
-        if cells and cells[0] in registry.NAMES:
-            rows[cells[0]] = cells[3]
+        if "CALLS HOME" in cells:
+            column = cells.index("CALLS HOME")
+        elif cells and cells[0] in registry.NAMES:
+            rows[cells[0]] = cells[column]
 
     assert rows["no-framework"] == "no"
     assert rows["crewai"] == "yes"

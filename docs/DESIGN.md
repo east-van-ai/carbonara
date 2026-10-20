@@ -67,6 +67,33 @@ Every candidate is then run and asked what version it is. Finding a name is not
 the same as finding a working interpreter, and a shim that resolves somewhere
 unexpected should be caught rather than trusted.
 
+## Docker, a second way to run
+
+`--docker` runs a stack in a container instead of a virtual environment. The
+image does the venv's job. Each stack gets one, `carbonara-<stack>`, built
+on the official `python:<version>-slim` image for the version its
+`python-version` file names. Its requirements install straight into that
+Python. A venv inside the image would only repeat the separation the image
+already gives.
+
+One Dockerfile builds all four, and the image holds dependencies only. The
+script is mounted read-only at run time, the way a venv holds dependencies and
+the script comes from the package. So editing a stack script needs no rebuild,
+in either mode.
+
+Ollama stays on the host. Docker on macOS cannot reach the GPU, so a model in
+a container would run on the CPU alone. Starting a container costs about a
+quarter of a second, so a cook takes as long in Docker as in a venv. The
+model is the time.
+
+Telemetry is handled exactly as in a venv: the same switches, and the same
+consent file, mounted where crewai looks for it on Linux. The container is on
+Docker's default network, with a route out. So Docker mode makes no stronger
+promise about calling home than venv mode does.
+
+Untested on Linux, where Ollama listens on `127.0.0.1` by default, out of a
+container's reach.
+
 ## Stacks are data, not packages
 
 The four implementations sit under `src/carbonara/stacks/<name>/` as scripts
@@ -77,10 +104,6 @@ This is why the directory holding `crewai`'s implementation does not need to be
 a valid Python package name, and why nothing in the dispatcher may reach into
 one with an import. Crossing that line silently reintroduces the interpreter
 conflict the whole design exists to avoid.
-
-The consequence for packaging: these files ship as package data, declared
-explicitly. Automatic package discovery will not find them, because they are
-not packages.
 
 There is a second reason to leave them whole, and it outlives the first. The
 four repeat each other heavily: the same doers, the same colours, the same
@@ -103,9 +126,6 @@ They pass as environment variables: `CARBONARA_MODEL`,
 so a stack script still runs correctly on its own with no environment set. The
 demo stays editable by hand, which is the point of keeping those literals at
 the top.
-
-`CARBONARA_STREAM_DELAY` is read by `no-framework` alone. It is the one stack
-with a token loop of its own to slow down.
 
 ## The expeditor's plan survives a decorated answer
 
@@ -172,6 +192,11 @@ None of this is hidden. `carbonara list` carries a CALLS HOME column naming
 which stacks would reach the network, and turning them loose again is one
 documented flag.
 
+Every cook also prints the command it runs, ready to paste into a shell, so
+the switches are on screen, not only in a document. The consent file stays
+off screen. It is written before the run, so a pasted command on a fresh
+machine can still meet crewai's prompt.
+
 The column counts what a stack does, observed with the frameworks' own
 defaults. What a stack could do, given a setting the demo never makes, is
 recorded in CALLS-HOME.md and never counted.
@@ -201,6 +226,8 @@ src/carbonara/
     cli_cook_with.py
     registry.py        the four stacks as data: name, interpreter, paths
     environ.py         interpreter discovery, venv building, readiness
+    containers.py      Docker mode: images, the run command, readiness
+    docker/            the one Dockerfile, shipped as package data
     stacks/            the four implementations, shipped as package data
 ```
 

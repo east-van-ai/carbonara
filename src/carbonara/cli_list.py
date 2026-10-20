@@ -2,10 +2,11 @@
 # ~~~ ~~~ ~~~ ~~~ ~~~ carbonara list ~~~ ~~~ ~~~ ~~~ ~~~
 #
 # Print the four agent stacks, the interpreter each one wants, whether
-# its environment is built, and which of them reaches the network on its
-# own account. Ollama's state goes underneath, along with where the
-# environments live. This is the command that answers "why did that
-# fail", and the one that answers "which of these is watching me".
+# its environment and its Docker image are built, and which of them
+# reaches the network on its own account. Ollama's and Docker's state
+# go underneath, along with where the environments live. This is the
+# command that answers "why did that fail", and the one that answers
+# "which of these is watching me".
 #
 # Usage:
 #
@@ -15,7 +16,7 @@
 # complete command line, so it runs rather than documenting itself.
 """
 
-from . import environ, registry
+from . import containers, environ, registry
 
 USAGE = "carbonara list"
 
@@ -30,13 +31,22 @@ def state(stack):
     return "not built"
 
 
+def image_state(stack, docker):
+    """Describe one stack's Docker image in a few words."""
+    if not docker.ok:
+        return "no docker"
+    return "built" if containers.is_built(stack) else "not built"
+
+
 def run(args):
-    """Print every stack's state, then Ollama's."""
+    """Print every stack's state, then Ollama's and Docker's."""
+    docker = containers.check_docker()
     rows = [
         (
             s.name,
             s.python_version,
             state(s),
+            image_state(s, docker),
             "yes" if s.phones_home else "no",
             s.summary,
         )
@@ -46,13 +56,17 @@ def run(args):
     # is more. "ENVIRONMENT" is longer than anything that ever sits under it.
     width = max(len("STACK"), *(len(row[0]) for row in rows))
     state_width = max(len("ENVIRONMENT"), *(len(row[2]) for row in rows))
+    image_width = max(len("IMAGE"), *(len(row[3]) for row in rows))
 
     print()
-    print(f"  {'STACK':<{width}}  PYTHON  {'ENVIRONMENT':<{state_width}}  CALLS HOME")
-    for name, version, condition, calls, summary in rows:
+    print(
+        f"  {'STACK':<{width}}  PYTHON  {'ENVIRONMENT':<{state_width}}  "
+        f"{'IMAGE':<{image_width}}  CALLS HOME"
+    )
+    for name, version, condition, built, calls, summary in rows:
         print(
             f"  {name:<{width}}  {version:<6}  {condition:<{state_width}}  "
-            f"{calls:<10}  {summary}"
+            f"{built:<{image_width}}  {calls:<10}  {summary}"
         )
 
     ollama = environ.check_ollama()
@@ -62,6 +76,11 @@ def run(args):
     else:
         print(f"  {ollama.problem}")
         print(f"  try: {ollama.fix}")
+    if docker.ok:
+        print("  docker is running, for --docker")
+    else:
+        print(f"  {docker.problem}")
+        print(f"  try: {docker.fix}")
     print()
     print(f"  environments live in {environ.venvs_root()}")
     print(

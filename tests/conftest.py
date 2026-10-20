@@ -9,7 +9,7 @@ import sys
 
 import pytest
 
-from carbonara import cli, environ, registry
+from carbonara import cli, containers, environ, registry
 
 #: Captured before the offline fixture replaces it, for the one test that
 #: needs the real thing.
@@ -34,10 +34,12 @@ def invoke(monkeypatch, capsys):
 
 @pytest.fixture(autouse=True)
 def offline(monkeypatch, tmp_path):
-    """Keep the suite off the network and out of the real environment tree."""
+    """Keep the suite off the network, off Docker, and out of the real venvs."""
     monkeypatch.setattr(environ, "installed_models", lambda: {registry.DEFAULT_MODEL})
     monkeypatch.setattr(environ, "venvs_root", lambda: tmp_path / "venvs")
     monkeypatch.setattr(environ, "crewai_state_dir", lambda *a, **k: tmp_path / "state")
+    monkeypatch.setattr(containers, "check_docker", lambda: environ.Check(True))
+    monkeypatch.setattr(containers, "is_built", lambda stack: False)
 
 
 @pytest.fixture

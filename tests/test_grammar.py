@@ -7,7 +7,7 @@ what this file is for.
 
 import pytest
 
-from carbonara.args import EXIT_ARGPARSE, EXIT_ERROR, EXIT_OK
+from carbonara.args import EXIT_ARGPARSE, EXIT_ERROR, EXIT_OK, build_parser
 
 
 def test_bare_tool_prints_the_banner(invoke):
@@ -114,6 +114,7 @@ def test_version_rejects_a_stray_word(invoke):
         ("list", "--version"),
         ("version", "--version"),
         ("version", "--latest"),
+        ("list", "--docker"),
     ],
     ids=[
         "unknown command",
@@ -125,9 +126,18 @@ def test_version_rejects_a_stray_word(invoke):
         "version on a command",
         "version on the version command",
         "unknown flag on version",
+        "docker on list",
     ],
 )
 def test_argparse_keeps_the_vocabulary_it_owns(invoke, arguments):
     """Unknown words, unknown flags, and bad values are argparse's, exit 2."""
     code, _, _ = invoke(*arguments)
     assert code == EXIT_ARGPARSE
+
+
+@pytest.mark.parametrize("command", ["prep", "cook-with"])
+def test_docker_is_a_flag_on_the_stack_commands(command):
+    """--docker sits after STACK on prep and cook-with, and is off by default."""
+    parser = build_parser()
+    assert parser.parse_args([command, "crewai", "--docker"]).docker is True
+    assert parser.parse_args([command, "crewai"]).docker is False

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "carbonara"
-version = "0.2.3"
+version = "0.2.4"
 description = "One agentic AI demo, four agent stacks, one command."
 readme = "README.md"
 requires-python = ">=3.14"
@@ -47,9 +47,9 @@ package-dir = { "" = "src" }
 
 # The stack directories are not packages and discovery will not find them.
 # They ship as data because that is what they are: scripts for another
-# interpreter, never imported by this one.
+# interpreter, never imported by this one. The Dockerfile ships the same way.
 [tool.setuptools.package-data]
-carbonara = ["stacks/*/*"]
+carbonara = ["stacks/*/*", "docker/*"]
 
 [tool.pytest.ini_options]
 # sys capture required by the subprocess-based integration tests

@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-20
+
+### Added
+
+- `--docker` on `prep` and `cook-with` builds a stack's image and cooks in a
+  container, with Ollama on the host. `carbonara list` shows each image beside its
+  venv.
+- Every cook prints the command that runs the stack, ready to paste into a shell.
+  An image build prints its `docker build` line.
+
+### Fixed
+
+- The `--telemetry` notice no longer lands after the stack's output when stdout is
+  a pipe.
+
 ## [0.2.3] - 2026-10-15
 
 ### Added

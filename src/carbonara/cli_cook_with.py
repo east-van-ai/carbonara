@@ -12,11 +12,15 @@
 #
 # Telemetry is off for every stack unless --telemetry says otherwise.
 #
+# --docker cooks in a container instead, built from the same pinned
+# requirements. It reaches Ollama on the host, and telemetry is handled
+# the same way as in a virtual environment.
+#
 # Usage:
 #
 #    carbonara cook-with STACK [--order TEXT] [--model NAME]
 #    carbonara cook-with STACK [--temperature N] [--stream-delay N]
-#    carbonara cook-with STACK [--telemetry]
+#    carbonara cook-with STACK [--telemetry] [--docker]
 #
 # STACK is one of: no-framework, crewai, langgraph, smolagents.
 #
@@ -32,9 +36,11 @@
 #                        trace down on fast hardware.
 #    --telemetry         leave the framework's own telemetry defaults
 #                        alone. Off by default.
+#    --docker            cook in a Docker container. Builds the
+#                        stack's image first if it has none.
 """
 
-from . import environ, registry
+from . import containers, environ, registry
 from .args import EXIT_ERROR
 
 USAGE = "carbonara cook-with STACK [--order TEXT] [--model NAME] [--temperature N]"
@@ -53,6 +59,9 @@ def overrides(args):
 
 def run(stack, args):
     """Check readiness, build the environment if needed, then cook."""
+    if args.docker:
+        return run_docker(stack, args)
+
     ollama = environ.check_ollama(args.model or registry.DEFAULT_MODEL)
     if not ollama.ok:
         environ.report(ollama)
@@ -72,3 +81,29 @@ def run(stack, args):
         print("carbonara: --telemetry, leaving the framework's own defaults alone")
 
     return environ.run(stack, overrides(args), telemetry=args.telemetry)
+
+
+def run_docker(stack, args):
+    """Check readiness, build the image if needed, then cook in a container."""
+    docker = containers.check_docker()
+    if not docker.ok:
+        environ.report(docker)
+        return EXIT_ERROR
+
+    ollama = environ.check_ollama(args.model or registry.DEFAULT_MODEL)
+    if not ollama.ok:
+        environ.report(ollama)
+        return EXIT_ERROR
+
+    if not containers.is_built(stack):
+        print(
+            f"\ncarbonara: first cook with {stack.name} in Docker, building its image"
+        )
+        if not containers.build(stack):
+            print(f"carbonara: could not build the {containers.image(stack)} image")
+            return EXIT_ERROR
+
+    if args.telemetry:
+        print("carbonara: --telemetry, leaving the framework's own defaults alone")
+
+    return containers.run(stack, overrides(args), telemetry=args.telemetry)

@@ -11,6 +11,8 @@ src/**/*.py
 src/carbonara/stacks/*/python-version
 src/carbonara/stacks/*/requirements.txt
 src/carbonara/stacks/*/requirements-pinned.txt
+# --docker builds every image from this one file.
+src/carbonara/docker/Dockerfile
 tests/*.py
 CHANGELOG.md
 docs/CALLS-HOME.md

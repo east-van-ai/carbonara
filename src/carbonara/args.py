@@ -79,6 +79,11 @@ def build_parser():
         action="store_true",
         help="install from requirements.txt instead of the pinned set",
     )
+    prep.add_argument(
+        "--docker",
+        action="store_true",
+        help="build a Docker image instead of a virtual environment",
+    )
 
     cook = commands.add_parser(
         "cook-with", allow_abbrev=False, help="cook the demo with one stack"
@@ -98,6 +103,11 @@ def build_parser():
         "--telemetry",
         action="store_true",
         help="leave the frameworks' own telemetry defaults alone",
+    )
+    cook.add_argument(
+        "--docker",
+        action="store_true",
+        help="cook in a Docker container instead of a virtual environment",
     )
 
     commands.add_parser(

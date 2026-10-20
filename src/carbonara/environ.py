@@ -6,6 +6,8 @@ this module imports anything a stack depends on.
 
 import json
 import os
+import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -250,20 +252,79 @@ def decline_crewai_tracing(storage_name=CREWAI_STORAGE_NAME):
     return True
 
 
-def run(stack, overrides=None, telemetry=False):
-    """Run this stack's demo in its own environment, returning its exit code."""
-    environment = dict(os.environ)
+def stack_env(overrides=None, telemetry=False):
+    """Return the variables carbonara sets for a stack, on top of the user's own."""
+    environment = {}
     if not telemetry:
         environment.update(TELEMETRY_OFF)
         environment["CREWAI_STORAGE_DIR"] = CREWAI_STORAGE_NAME
-        decline_crewai_tracing()
     for key, value in (overrides or {}).items():
         if value is not None:
             environment[key] = str(value)
-    completed = subprocess.run(
-        [str(venv_python(stack)), str(stack.script)], env=environment, check=False
-    )
+    return environment
+
+
+def run(stack, overrides=None, telemetry=False):
+    """Run this stack's demo in its own environment, returning its exit code.
+
+    The printed `env` command and the run are built from the same variables
+    and the same interpreter and script, so the two cannot disagree.
+    """
+    environment = stack_env(overrides, telemetry)
+    command = [str(venv_python(stack)), str(stack.script)]
+    print_command(["env", *(f"{k}={v}" for k, v in environment.items()), *command])
+    if not telemetry:
+        decline_crewai_tracing()
+    completed = subprocess.run(command, env={**os.environ, **environment}, check=False)
     return completed.returncode
+
+
+ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def command_lines(argv, width=80):
+    """Split a command into lines a shell can paste back, one option per line.
+
+    The leading words share the first line. Each `--flag value` pair and each
+    `KEY=VALUE` gets a line. A flag takes the next token as its value unless
+    that token is a flag too. What is left shares the last line, or takes a
+    line per word when that line would run past `width`.
+    """
+    quoted = [shlex.quote(token) for token in argv]
+    index = 0
+    while index < len(argv) and not (
+        argv[index].startswith("-") or ASSIGNMENT.match(argv[index])
+    ):
+        index += 1
+    lines = [" ".join(quoted[:index])]
+    while index < len(argv):
+        token = argv[index]
+        if token.startswith("-"):
+            takes_value = index + 1 < len(argv) and not argv[index + 1].startswith("-")
+            step = 2 if takes_value else 1
+        elif ASSIGNMENT.match(token):
+            step = 1
+        else:
+            break
+        lines.append(" ".join(quoted[index : index + step]))
+        index += step
+    tail = quoted[index:]
+    if tail:
+        if len(" ".join(tail)) + 4 <= width:
+            lines.append(" ".join(tail))
+        else:
+            lines.extend(tail)
+    return lines
+
+
+def print_command(argv):
+    """Print the command about to run, as a shell would take it, then flush.
+
+    The flush keeps it ahead of the child's output when stdout is a pipe.
+    """
+    lines = command_lines(argv)
+    body = " \\\n    ".join(lines)
+    print(f"carbonara: running\n  {body}", flush=True)
 
 
 def report(check):

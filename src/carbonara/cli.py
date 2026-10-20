@@ -21,19 +21,22 @@
 # Usage:
 #
 #    carbonara list
-#    carbonara prep STACK [--latest]
+#    carbonara prep STACK [--latest] [--docker]
 #    carbonara cook-with STACK [--order TEXT] [--model NAME] [--temperature N]
-#    carbonara cook-with STACK --telemetry
+#    carbonara cook-with STACK [--telemetry] [--docker]
 #
 # Commands:
 #
 #    list                show every stack, the interpreter it wants,
-#                        whether its environment is built, and which of
-#                        them calls home. Read-only.
-#    prep STACK          build that stack's environment. Pinned unless
-#                        --latest says otherwise.
-#    cook-with STACK     cook the demo with that stack. Preps its
-#                        station first if this is its first cook.
+#                        whether its environment and its Docker image
+#                        are built, and which of them calls home.
+#                        Read-only.
+#    prep STACK          build that stack's environment, or its Docker
+#                        image with --docker. Pinned unless --latest
+#                        says otherwise.
+#    cook-with STACK     cook the demo with that stack, in a container
+#                        with --docker. Preps its station first if this
+#                        is its first cook.
 #
 # STACK is one of: no-framework, crewai, langgraph, smolagents.
 #
@@ -71,7 +74,8 @@
 #
 #    0:     success, and documentation
 #    1:     carbonara's own error, a STACK missing or stray, or a
-#           readiness failure: no interpreter, no Ollama, no model
+#           readiness failure: no interpreter, no Ollama, no model,
+#           no Docker
 #    2:     an unknown command, an unknown flag, or a bad value
 #
 # License: MIT

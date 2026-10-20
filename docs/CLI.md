@@ -8,9 +8,9 @@ DESIGN.md.
 
 ```text
 carbonara list
-carbonara prep STACK [--latest]
+carbonara prep STACK [--latest] [--docker]
 carbonara cook-with STACK [--order TEXT] [--model NAME] [--temperature N]
-carbonara cook-with STACK [--stream-delay N] [--telemetry]
+carbonara cook-with STACK [--stream-delay N] [--telemetry] [--docker]
 carbonara version
 ```
 
@@ -32,9 +32,9 @@ was considered for `list` and rejected because it is a noun. The metaphor earns
 its place only where it also describes the action.
 
 `carbonara list` names the four stacks, the interpreter each wants, and whether
-its environment is built. It is the command that answers "why did that fail", so
-its name stays plain. A charming name costs most at exactly the moment someone
-is lost.
+its environment and its Docker image are built. It is the command that answers
+"why did that fail", so its name stays plain. A charming name costs most at
+exactly the moment someone is lost.
 
 ## A command with nothing to name
 
@@ -83,11 +83,35 @@ yesterday is worth more than a run on the newest resolvable tree. `--latest`
 installs from the unpinned `requirements.txt` for anyone deliberately testing
 against current releases.
 
+## `--docker`
+
+`--docker` on `prep` builds the stack's image instead of its venv. On
+`cook-with` it cooks in a container, building the image first if there is
+none. `--latest` and `--telemetry` mean the same thing in both modes.
+
+It is a flag, not a command word, because it changes how a cook runs, not what
+the command does. `list` does not take it. `list` reports both modes side by
+side, ENVIRONMENT and IMAGE, without being asked, so there is nothing for the
+flag to choose.
+
+## A cook shows its command first
+
+Before a stack starts, `cook-with` prints `carbonara: running` and the command
+it is about to run, one option per line, quoted for a shell. In a venv, that is
+an `env` line: the variables carbonara adds, then the interpreter and the
+script. Under `--docker`, it is the `docker run` line. An image build prints its
+`docker build` line the same way.
+
+It prints on every cook, with no flag to ask for it or to turn it off. Pasted
+into a shell, it cooks the same stack the same way, without carbonara.
+
 ## Readiness
 
 Two things fail outside the tool's control, and both fail the same way for
 every stack: the interpreter a stack needs is not installed, and Ollama is not
-reachable or does not have the model pulled.
+reachable or does not have the model pulled. Under `--docker`, a third: Docker
+is not installed or not running. Its fix is `start Docker Desktop`, and the
+interpreter check is skipped, since the image brings its own Python.
 
 These are readiness failures, not grammar failures, so they print no usage
 line. Each names the exact command that fixes it: `pyenv install 3.12`,

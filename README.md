@@ -124,6 +124,15 @@ carbonara list
 That prints the four stacks, the interpreter each one wants, and whether its
 environment is ready.
 
+Rather not install the frameworks into a Python of your own? Cook in a container:
+
+```bash
+carbonara cook-with crewai --docker
+```
+
+Each stack gets an image of its own, and the model stays in Ollama on your
+machine, so it runs just as fast.
+
 ## Requirements
 
 - [Ollama](https://ollama.com) running locally
@@ -131,6 +140,8 @@ environment is ready.
   `ollama pull hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M`
 - Python 3.14 for `carbonara` itself
 - Python 3.12 available for the `crewai` stack
+- [Docker](https://www.docker.com), only for `--docker`. That one needs no
+  Python 3.12. Tested with Docker Desktop on macOS.
 
 Everything runs on your own machine. No API keys, no cloud, no per-token
 billing while you rehearse.
@@ -139,8 +150,8 @@ That includes telemetry. Two of the four stacks phone home by default, and
 one of them asks mid-demo whether it may upload the run. `carbonara` turns
 every switch they honour off before it starts anything, and declines the
 tracing prompt so it never interrupts. Nothing here is hidden: `carbonara list`
-says so, and `--telemetry` on a cook hands the frameworks back their own
-defaults.
+says so, every cook prints the exact command it runs, and `--telemetry` hands
+the frameworks back their own defaults.
 
 ## Install, or clone
 
