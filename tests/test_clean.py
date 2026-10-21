@@ -10,7 +10,7 @@ import subprocess
 import pytest
 
 from carbonara import containers, environ, registry
-from carbonara.args import EXIT_ERROR, EXIT_OK
+from carbonara.cli import EXIT_ERROR, EXIT_OK
 
 
 def make_venv(stack):
@@ -62,7 +62,7 @@ def test_a_built_venv_is_removed_and_its_siblings_stay(invoke):
     """clean removes the named stack's venv and no other."""
     gone = make_venv(registry.find("crewai"))
     kept = make_venv(registry.find("langgraph"))
-    code, out, _ = invoke("clean", "crewai")
+    code, out, _ = invoke("clean", "crewai", "--venv")
     assert code == EXIT_OK
     assert f"removed {gone}" in out
     assert not gone.exists()
@@ -72,9 +72,9 @@ def test_a_built_venv_is_removed_and_its_siblings_stay(invoke):
 def test_cleaning_twice_is_not_a_failure(invoke):
     """Something already gone is reported, exit 0, every time."""
     make_venv(registry.find("crewai"))
-    invoke("clean", "crewai")
+    invoke("clean", "crewai", "--venv")
     for _ in range(2):
-        code, out, _ = invoke("clean", "crewai")
+        code, out, _ = invoke("clean", "crewai", "--venv")
         assert code == EXIT_OK
         assert "nothing to clean" in out
 
@@ -87,7 +87,7 @@ def test_a_symlink_in_the_venvs_place_is_refused(invoke, tmp_path):
     link = environ.venv_dir(registry.find("crewai"))
     link.parent.mkdir(parents=True)
     link.symlink_to(target)
-    code, _, err = invoke("clean", "crewai")
+    code, _, err = invoke("clean", "crewai", "--venv")
     assert code == EXIT_ERROR
     assert "stays" in err
     assert link.is_symlink()
@@ -100,7 +100,7 @@ def test_the_crewai_consent_file_survives(invoke):
     environ.decline_crewai_tracing()
     consent = environ.crewai_state_dir() / ".crewai_user.json"
     assert consent.exists()
-    code, _, _ = invoke("clean", "crewai")
+    code, _, _ = invoke("clean", "crewai", "--venv")
     assert code == EXIT_OK
     assert consent.exists()
 
@@ -134,6 +134,19 @@ def test_a_refused_image_still_tries_the_network(invoke, docker):
     assert code == EXIT_ERROR
     assert "could not remove carbonara-crewai" in err
     assert ["docker", "network", "rm", containers.NETWORK] in removals(docker)
+
+
+def test_two_refusals_are_both_reported(invoke, docker):
+    """The image and the network each name their own refusal, exit 1."""
+    docker["fail"] = {"image", "network"}
+    code, _, err = invoke("clean", "crewai", "--docker")
+    assert code == EXIT_ERROR
+    assert err.splitlines() == [
+        "carbonara: could not remove carbonara-crewai",
+        "  Error response from daemon: in use",
+        f"carbonara: could not remove the {containers.NETWORK} network",
+        "  Error response from daemon: in use",
+    ]
 
 
 def test_the_relay_image_is_never_removed(invoke, docker):

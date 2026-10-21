@@ -50,7 +50,7 @@ Environments live outside the repo, under
 `${XDG_DATA_HOME:-~/.local/share}/carbonara/venvs/<stack>/`. An installed
 command should run from any directory, and a checkout is not guaranteed to be
 present or writable once the tool is installed with `pipx`. Keeping the
-environments in a user data directory means `carbonara cook-with crewai`
+environments in a user data directory means `carbonara cook-with crewai --venv`
 behaves the same whether it was installed from a tag or from a working tree.
 
 Interpreter discovery asks three places, because each one misses on its own.
@@ -67,13 +67,17 @@ Every candidate is then run and asked what version it is. Finding a name is not
 the same as finding a working interpreter, and a shim that resolves somewhere
 unexpected should be caught rather than trusted.
 
-## Docker, a second way to run
+## Two ways to run, and no default
 
-`--docker` runs a stack in a container instead of a virtual environment. The
-image does the venv's job, Ollama stays on the host, and the container sits on
-a locked network with no route out. A relay forwards Ollama's port, and
-nothing else gets through. DOCKER.md holds the design, the relay, and what the
-lock cannot stop.
+`--venv` runs a stack in a virtual environment, and `--docker` in a container.
+Every command that acts on a stack names one. A default would pick one way to
+run over the others, and the command line would read differently as ways to run
+are added.
+
+Under `--docker`, the image does the venv's job, Ollama stays on the host, and
+the container sits on a locked network with no route out. A relay forwards
+Ollama's port, and nothing else gets through. DOCKER.md holds the design, the
+relay, and what the lock cannot stop.
 
 ## Stacks are data, not packages
 
@@ -200,10 +204,12 @@ following it lands on the placeholder.
 
 ```text
 src/carbonara/
-    cli.py             banner, command table, slot reading, main
-    args.py            parser, exit codes, type callables, installed_version
+    cli.py             banner, exit codes, command table, reporters, main
+    args.py            parser, subparsers, slot reading, type callables
+    errors.py          the readiness and runtime failure classes
+    shared.py          the stack table that list and the bare pages print
     cli_list.py        one module per command word, each holding that
-    cli_prep.py        command's own documentation, USAGE line, and run()
+    cli_prep.py        command's own page, HELP, USAGE, SLOTS, and run()
     cli_cook_with.py
     cli_clean.py
     registry.py        the four stacks as data: name, interpreter, paths

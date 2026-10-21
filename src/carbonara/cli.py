@@ -1,197 +1,198 @@
 """
 # ==============================================
 # East Van AI -- AI for the rest of us!
-# https://github.com/east-van-ai
+# https://github.com/east-van-ai/carbonara
 # contact: east-van-ai@proton.me
+# license: MIT
 # ==============================================
-#
-# ~~~ ~~~ ~~~ ~~~ ~~~ carbonara ~~~ ~~~ ~~~ ~~~ ~~~
-#
-# One agentic AI demo, four agent stacks, one command. A dispatcher takes
-# a plain English order, an expeditor reasons out which workers to call
-# and in what sequence, and the workers each do one job. Nobody hardcodes
-# the sequence. The model works it out, and watching it reason is the
-# demo.
-#
-# The same scenario is built four times over, once per agent stack.
-# carbonara imports none of them. Each stack gets its own interpreter and
-# its own virtual environment, because crewai refuses Python 3.14 and the
-# other three want it.
-#
-# Usage:
-#
-#    carbonara list
-#    carbonara prep STACK [--latest] [--docker]
-#    carbonara cook-with STACK [--order TEXT] [--model NAME] [--temperature N]
-#    carbonara cook-with STACK [--telemetry] [--docker]
-#    carbonara clean STACK [--docker]
-#
-# Commands:
-#
-#    list                show every stack, the interpreter it wants,
-#                        whether its environment and its Docker image
-#                        are built, and which of them calls home.
-#                        Read-only.
-#    prep STACK          build that stack's environment, or its Docker
-#                        image with --docker. Pinned unless --latest
-#                        says otherwise.
-#    cook-with STACK     cook the demo with that stack, in a container
-#                        with --docker. Preps its station first if this
-#                        is its first cook.
-#    clean STACK         remove that stack's environment, or its Docker
-#                        image and the locked network with --docker, so
-#                        the next prep starts from scratch.
-#
-# STACK is one of: no-framework, crewai, langgraph, smolagents.
-#
-# Calling home:
-#
-#    Two of the four stacks reach the network on their own account, and
-#    neither asks first. crewai sends its own telemetry. smolagents
-#    fetches a price list through LiteLLM, a library underneath it.
-#    langgraph stays home until someone turns on LangSmith tracing,
-#    and no-framework has nothing that could call at all. It is the most
-#    interesting thing the four have to say about each other.
-#
-#    carbonara silences both before it runs anything. Every switch they
-#    honour goes off, and crewai's tracing prompt is answered with a no
-#    in its own consent file. `carbonara list` shows which stack is
-#    which. --telemetry hands them back their own defaults.
-#
-# Run prep, cook-with, or clean with nothing after it for its own documentation,
-# including the options it takes:
-#
-#    carbonara prep
-#    carbonara cook-with
-#    carbonara clean
-#
-# list takes no STACK, so bare `carbonara list` runs rather than
-# documenting itself.
-#
-# STACK comes first, then flags, whose order among themselves is free.
-# Spell flags in full: an abbreviation like `--temp` is rejected, so it
-# can never stand in for `--temperature`. Bare `carbonara` prints this
-# text and exits 0. Asking is not a usage error.
-#
-# carbonara reads no piped input.
-#
-# Exit codes:
-#
-#    0:     success, and documentation
-#    1:     carbonara's own error, a STACK missing or stray, or a
-#           readiness failure: no interpreter, no Ollama, no model,
-#           no Docker
-#    2:     an unknown command, an unknown flag, or a bad value
-#
-# License: MIT
-# ==============================================
+
+        carbonara
+
+One agentic AI demo, four agent stacks, one command. A dispatcher takes a
+plain English order, an expeditor reasons out which workers to call and in
+what order, and each worker does one job. Nobody hardcodes the sequence: the
+model works it out, and watching it reason is the demo. The same scenario is
+built once per stack, crewai, langgraph, smolagents, and plain Python, each
+in an interpreter and a virtual environment of its own, or a container. See
+where things stand with `carbonara list`, and cook with `carbonara cook-with
+STACK --venv`, or `--docker`.
+
+Run a command with nothing after it for its own page. list takes no STACK,
+so bare `carbonara list` runs instead.
+
+calling home:
+    crewai sends its own telemetry, and smolagents fetches a price list
+    through LiteLLM. Neither asks first. carbonara turns every switch they
+    honour off before it runs anything, and --telemetry on a cook hands them
+    back their own defaults. `carbonara list` shows which stack is which.
+
+piped input:
+    carbonara reads none.
+
+exit codes:
+    0:     success, and documentation
+    1:     carbonara's own error: a STACK missing or stray, no --venv or
+           --docker, a readiness failure (no interpreter, no Ollama, no
+           model, no Docker), or a build or removal that failed partway
+    2:     an unknown command, an unknown option, a bad value, an unknown
+           STACK, or --venv and --docker together
+    other: a cook exits with the stack's own exit code
 """
 
 import sys
+from collections import namedtuple
 
-from . import cli_clean, cli_cook_with, cli_list, cli_prep, registry
-from .args import EXIT_ARGPARSE, EXIT_ERROR, EXIT_OK, build_parser, version_line
+from . import (
+    args,
+    cli_clean,
+    cli_cook_with,
+    cli_list,
+    cli_prep,
+    errors,
+    registry,
+    shared,
+)
 
-__all__ = ["EXIT_ARGPARSE", "EXIT_ERROR", "EXIT_OK", "main"]
+# 2 never returns through main(): argparse's error() and the --version action
+# call sys.exit() themselves. It exists to be asserted against.
+EXIT_OK = 0
+EXIT_ERROR = 1
+EXIT_ARGPARSE = 2
 
-# Each command's surface module carries its own documentation, usage line,
-# and run(). Every command but list reads the same single STACK slot.
+Command = namedtuple("Command", "bare usage slots modes action")
+"""A command word's answer to being typed alone, its usage line, the slots it
+reads, the mode flags it needs one of, and the action a full invocation runs.
+
+`bare` returns the text for the bare word; `action` runs the command and
+returns None, or an exit code of its own. For `list` and `version`, both read
+from the same function, since running the command answers the bare word.
+"""
+
+
+def command_page(module, add_command):
+    """Return a command's bare page: its docstring, the stack table, then its --help."""
+    doc = module.__doc__.strip("\n")  # not strip(): the title's indent is layout
+    help_text = args.command_help(add_command).rstrip()
+    return f"{doc}\n\n{shared.stack_table()}\n\n{help_text}"
+
+
+def on_stack(module):
+    """Return an action that runs a STACK command on the stack it names."""
+    return lambda paths, parsed: module.run(registry.find(paths[0]), parsed)
+
+
 COMMANDS = {
-    "list": cli_list,
-    "prep": cli_prep,
-    "cook-with": cli_cook_with,
-    "clean": cli_clean,
+    "list": Command(
+        cli_list.table,
+        cli_list.USAGE,
+        cli_list.SLOTS,
+        (),
+        lambda paths, parsed: print(cli_list.table()),
+    ),
+    "prep": Command(
+        lambda: command_page(cli_prep, args.add_prep),
+        cli_prep.USAGE,
+        cli_prep.SLOTS,
+        args.MODES,
+        on_stack(cli_prep),
+    ),
+    "cook-with": Command(
+        lambda: command_page(cli_cook_with, args.add_cook_with),
+        cli_cook_with.USAGE,
+        cli_cook_with.SLOTS,
+        args.MODES,
+        on_stack(cli_cook_with),
+    ),
+    "clean": Command(
+        lambda: command_page(cli_clean, args.add_clean),
+        cli_clean.USAGE,
+        cli_clean.SLOTS,
+        args.MODES,
+        on_stack(cli_clean),
+    ),
+    "version": Command(
+        args.version_line,
+        "carbonara version",
+        (),
+        (),
+        lambda paths, parsed: print(args.version_line()),
+    ),
 }
-
-# list acts on the whole registry, so there is no argument for it to be
-# missing. Its bare form is a complete command line, not a question.
-STACKLESS = {"list"}
-
-# version is missing from both on purpose. It has no command module, so main()
-# answers it directly, and its stray-word error reaches for this usage line.
-VERSION_USAGE = "carbonara version"
-
-
-def leading_paths(tokens):
-    """Return the tokens ahead of the first flag.
-
-    The documented grammar puts STACK before every flag, so the slot is read
-    off the front of the command line. What argparse resolved from anywhere
-    else is discarded, since how much it tolerates depends on the interpreter.
-    """
-    paths = []
-    for token in tokens:
-        if token.startswith("-"):
-            break
-        paths.append(token)
-    return paths
 
 
 def usage_error(usage, message):
     """Report a command line carbonara could not read, with the matching usage."""
+    sys.stdout.flush()
     print(f"carbonara: {message}", file=sys.stderr)
     print(f"Usage: {usage}", file=sys.stderr)
     return EXIT_ERROR
 
 
-def main():
-    """Parse arguments, enforce the CLI grammar, and dispatch to a command.
+def readiness_error(message):
+    """Report what the run needed and did not find, with no usage line."""
+    sys.stdout.flush()
+    print(f"carbonara: {message}", file=sys.stderr)
+    return EXIT_ERROR
 
-    A bare word is a question and gets documentation, exit 0, except where the
-    command takes no argument. Any other shortfall in the STACK slot is a slip
-    and gets an error, exit 1. Argparse keeps the vocabulary it owns: an
-    unknown command, an unknown flag, or a bad value, exiting 2.
-    """
-    tokens = sys.argv[1:]
+
+def runtime_error(message):
+    """Report a run that stopped partway, naming what was written."""
+    sys.stdout.flush()
+    print(f"carbonara: {message}", file=sys.stderr)
+    return EXIT_ERROR
+
+
+def main(argv=None):
+    """Parse arguments, run the matching command, return an exit code."""
+    tokens = list(sys.argv[1:] if argv is None else argv)
 
     if not tokens:
-        print(__doc__.strip())
+        print(f"{__doc__.strip()}\n\n{args.build_parser().format_help().rstrip()}")
         return EXIT_OK
 
-    if len(tokens) == 1 and tokens[0] in COMMANDS and tokens[0] not in STACKLESS:
-        print(COMMANDS[tokens[0]].__doc__.strip())
+    # A command word and nothing else is a question, and its own page answers.
+    if len(tokens) == 1 and tokens[0] in COMMANDS:
+        print(COMMANDS[tokens[0]].bare())
         return EXIT_OK
 
-    parser = build_parser()
-    args, extras = parser.parse_known_args(tokens)
+    parser = args.build_parser()
+    parsed, extras = parser.parse_known_args(tokens)
 
     if any(extra.startswith("-") for extra in extras):
         parser.parse_args(tokens)  # argparse names the flag better, exit 2
 
-    if args.command == "version":
-        strays = leading_paths(tokens[1:])
-        if strays:
-            return usage_error(
-                VERSION_USAGE, f"version takes no arguments: {strays[0]!r}"
-            )
-        print(version_line())
-        return EXIT_OK
+    paths = args.leading_paths(tokens[1:])
 
-    module = COMMANDS[args.command]
+    command = COMMANDS[parsed.command]
 
-    if args.command in STACKLESS:
-        strays = leading_paths(tokens[1:])
-        if strays:
-            return usage_error(
-                module.USAGE, f"{args.command} takes no arguments: {strays[0]!r}"
-            )
-        return module.run(args)
+    if len(paths) < len(command.slots):
+        needed = " and ".join(command.slots)
+        if len(command.slots) > 1:
+            needed = f"both {needed}"
+        return usage_error(command.usage, f"{parsed.command} needs {needed}")
 
-    # Not args.stack: what argparse resolves from a token after a flag varies
-    # by interpreter, and the grammar should not.
-    names = leading_paths(tokens[1:])
-    if not names:
-        return usage_error(module.USAGE, f"{args.command} needs STACK")
-    if len(names) > 1:
+    # A word past the slots is a stray, and so is one argparse left over after a flag.
+    strays = paths[len(command.slots) :] or extras
+    if strays:
+        last = command.slots[-1] if command.slots else "it"
         return usage_error(
-            module.USAGE, f"{args.command} takes nothing after STACK: {names[1]!r}"
+            command.usage,
+            f"{parsed.command} takes nothing after {last}: {strays[0]!r}",
         )
 
-    stack = registry.find(names[0])
-    if stack is None:
-        return usage_error(module.USAGE, f"unknown stack {names[0]!r}")
+    # No mode is a default, so a STACK command that names none is a slip.
+    if command.modes and not any(getattr(parsed, m[2:]) for m in command.modes):
+        either = " or ".join(command.modes)
+        return usage_error(command.usage, f"{parsed.command} needs {either}")
 
-    return module.run(stack, args)
+    try:
+        code = command.action(paths, parsed)
+    except errors.ReadinessError as failure:
+        return readiness_error(str(failure))
+    except errors.RuntimeFailure as failure:
+        return runtime_error(str(failure))
+
+    return EXIT_OK if code is None else code
 
 
 if __name__ == "__main__":

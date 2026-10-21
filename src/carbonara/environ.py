@@ -16,7 +16,7 @@ import urllib.request
 from pathlib import Path
 from typing import NamedTuple
 
-from . import registry
+from . import errors, registry
 
 WINDOWS = os.name == "nt"
 
@@ -327,12 +327,7 @@ def print_command(argv):
     print(f"carbonara: running\n  {body}", flush=True)
 
 
-def report(check):
-    """Print a readiness failure and the command that repairs it.
-
-    No usage line goes with it. The command line was read fine and something
-    the run needed was not there, so usage would answer a question nobody
-    asked.
-    """
-    print(f"carbonara: {check.problem}", file=sys.stderr)
-    print(f"  try: {check.fix}", file=sys.stderr)
+def require(check):
+    """Raise a readiness failure, with the command that repairs it, unless it passed."""
+    if not check.ok:
+        raise errors.ReadinessError(f"{check.problem}\n  try: {check.fix}")

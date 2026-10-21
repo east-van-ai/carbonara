@@ -86,7 +86,7 @@ def test_the_printed_command_reads_back_as_the_argv(capsys, argv):
 
 def test_a_venv_cook_prints_what_it_runs(invoke, ran, built):
     """The env line carries every switch, then the venv's python and the script."""
-    code, out, _ = invoke("cook-with", "crewai")
+    code, out, _ = invoke("cook-with", "crewai", "--venv")
     assert code == 0
     printed = printed_argv(out)
     stack = registry.find("crewai")
@@ -98,7 +98,7 @@ def test_a_venv_cook_prints_what_it_runs(invoke, ran, built):
 
 def test_a_venv_cook_with_telemetry_prints_no_switch(invoke, ran, built):
     """--telemetry hands the defaults back, and the print says so."""
-    _, out, _ = invoke("cook-with", "crewai", "--telemetry")
+    _, out, _ = invoke("cook-with", "crewai", "--venv", "--telemetry")
     printed = printed_argv(out)
     assert not any(token.split("=")[0] in environ.TELEMETRY_OFF for token in printed)
 

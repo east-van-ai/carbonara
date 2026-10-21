@@ -11,8 +11,7 @@ import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from . import environ
-from .args import EXIT_ERROR
+from . import environ, errors
 
 DOCKERFILE = Path(__file__).parent / "docker" / "Dockerfile"
 
@@ -207,16 +206,22 @@ def build(stack, pinned=True):
 
 
 def quietly(argv, what):
-    """Print a docker command, run it for its effect, and report a failure.
+    """Print a docker command and run it for its effect.
 
-    Returns True on success.
+    Returns None on success, or what could not be done and Docker's own words.
     """
     environ.print_command(argv)
     done = subprocess.run(argv, capture_output=True, text=True, check=False)
-    if done.returncode != 0:
-        print(f"carbonara: could not {what}", file=sys.stderr)
-        print(f"  {done.stderr.strip()}", file=sys.stderr)
-    return done.returncode == 0
+    if done.returncode == 0:
+        return None
+    return f"could not {what}\n  {done.stderr.strip()}"
+
+
+def strictly(argv, what):
+    """Print a docker command and run it, raising a runtime failure if it fails."""
+    refusal = quietly(argv, what)
+    if refusal:
+        raise errors.RuntimeFailure(refusal)
 
 
 def network_exists():
@@ -229,9 +234,8 @@ def network_exists():
 
 def ensure_network():
     """Create the locked network unless it is already there."""
-    if network_exists():
-        return True
-    return quietly(network_argv(), f"create the {NETWORK} network")
+    if not network_exists():
+        strictly(network_argv(), f"create the {NETWORK} network")
 
 
 def cook(argv):
@@ -252,14 +256,11 @@ def run(stack, overrides=None, telemetry=False):
         return cook(argv)
 
     environ.decline_crewai_tracing()
-    if not ensure_network():
-        return EXIT_ERROR
+    ensure_network()
     relay = f"carbonara-relay-{os.getpid()}"
     try:
-        if not quietly(relay_argv(relay), "start the Ollama relay"):
-            return EXIT_ERROR
-        if not quietly(connect_argv(relay), f"put the relay on {NETWORK}"):
-            return EXIT_ERROR
+        strictly(relay_argv(relay), "start the Ollama relay")
+        strictly(connect_argv(relay), f"put the relay on {NETWORK}")
         return cook(argv)
     finally:
         remove = ["docker", "rm", "--force", relay]

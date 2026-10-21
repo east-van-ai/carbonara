@@ -1,97 +1,86 @@
 """
-# ~~~ ~~~ ~~~ ~~~ ~~~ carbonara clean ~~~ ~~~ ~~~ ~~~ ~~~
-#
-# Clean a stack's station: remove its virtual environment, so the next
-# prep builds it from scratch rather than on top of what is there.
-#
-# --docker removes the stack's Docker image instead, and the locked
-# network every Docker cook shares. The network outlives each cook on
-# purpose, and this is the way to remove it. The next locked cook makes
-# it again. The relay image stays: it is pinned by digest, so pulling it
-# again would bring back the same bytes.
-#
-# There is no prompt, and no form that cleans every stack at once. One
-# stack per call keeps a typo from reaching further than one station.
-# Something already gone is reported and is not a failure, so running
-# clean twice gives the same result. Docker refuses to remove an image
-# or the network while a cook is using it, and clean passes that refusal
-# on rather than forcing it.
-#
-# crewai's consent file is never touched.
-#
-# Usage:
-#
-#    carbonara clean STACK [--docker]
-#
-# STACK is one of: no-framework, crewai, langgraph, smolagents.
-#
-# Options:
-#
-#    --docker            remove the stack's Docker image and the locked
-#                        network instead of its virtual environment.
+        carbonara -- clean
+
+https://github.com/east-van-ai/carbonara
+
+Clean a stack's station, so the next prep builds it from scratch rather than
+on top of what is there. --venv removes the stack's virtual environment.
+One of the two is required, and neither is a default.
+
+--docker removes the stack's Docker image, and the locked network every
+Docker cook shares. The network outlives each cook, and this is the way to
+remove it. The next locked cook makes it again. The relay image stays.
+
+There is no prompt, and no form that cleans every stack at once. Something
+already gone is reported and is not a failure, so running clean twice gives
+the same result. Docker refuses to remove an image or the network while a
+cook is using it, and clean passes that refusal on rather than forcing it.
+
+crewai's consent file is never touched.
+
+The table below shows where each stack stands, in both modes.
 """
 
 import shutil
-import sys
 
-from . import containers, environ
-from .args import EXIT_ERROR, EXIT_OK
+from . import containers, environ, errors
 
-USAGE = "carbonara clean STACK [--docker]"
+HELP = "clean a stack's station"
+USAGE = "carbonara clean STACK (--venv | --docker)"
+SLOTS = ("STACK",)
 
 
 def run(stack, args):
-    """Remove one stack's virtual environment, reporting what it could not do."""
+    """Remove one stack's virtual environment, or raise what stopped it."""
     if args.docker:
-        return run_docker(stack)
+        run_docker(stack)
+        return
 
     path = environ.venv_dir(stack)
     if not path.exists() and not path.is_symlink():
         print(f"carbonara: no virtual environment for {stack.name}, nothing to clean")
-        return EXIT_OK
+        return
 
     # carbonara only ever makes a real directory here, so anything else is not ours.
     if path.is_symlink() or not path.is_dir():
-        print(
-            f"carbonara: {path} is not a directory carbonara built, so it stays",
-            file=sys.stderr,
+        raise errors.ReadinessError(
+            f"{path} is not a directory carbonara built, so it stays"
         )
-        return EXIT_ERROR
 
     try:
         shutil.rmtree(path)
     except OSError as error:
-        print(f"carbonara: could not remove {path}", file=sys.stderr)
-        print(f"  {error}", file=sys.stderr)
-        return EXIT_ERROR
+        raise errors.RuntimeFailure(f"could not remove {path}\n  {error}") from None
 
     print(f"carbonara: removed {path}")
-    return EXIT_OK
 
 
 def run_docker(stack):
-    """Remove one stack's image and the locked network, reporting what failed.
+    """Remove one stack's image and the locked network, or raise what failed.
 
     The network is tried even when the image fails, so both refusals show.
     """
-    docker = containers.check_docker()
-    if not docker.ok:
-        environ.report(docker)
-        return EXIT_ERROR
+    environ.require(containers.check_docker())
 
     tag = containers.image(stack)
-    removed = True
+    refusals = []
     if containers.is_built(stack):
-        removed = containers.quietly(containers.image_rm_argv(stack), f"remove {tag}")
+        refusals.append(
+            containers.quietly(containers.image_rm_argv(stack), f"remove {tag}")
+        )
     else:
         print(f"carbonara: no image {tag}, nothing to clean")
 
     if containers.network_exists():
-        network = containers.quietly(
-            containers.network_rm_argv(), f"remove the {containers.NETWORK} network"
+        refusals.append(
+            containers.quietly(
+                containers.network_rm_argv(),
+                f"remove the {containers.NETWORK} network",
+            )
         )
-        removed = network and removed
     else:
         print(f"carbonara: no {containers.NETWORK} network, nothing to clean")
 
-    return EXIT_OK if removed else EXIT_ERROR
+    refused = [refusal for refusal in refusals if refusal]
+    if refused:
+        raise errors.RuntimeFailure("\ncarbonara: ".join(refused))

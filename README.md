@@ -68,20 +68,21 @@ goes with it.
 ## Run it
 
 ```bash
-carbonara cook-with no-framework
+carbonara cook-with no-framework --venv
 ```
 
-The first run of a stack builds its environment, then runs the demo. After
-that it just runs.
+`--venv` cooks in a virtual environment of the stack's own, and `--docker` in a
+container. Every cook names one. The first run of a stack builds its
+environment, then runs the demo. After that it just runs.
 
 Give it a different order, or turn up the chaos:
 
 ```bash
-carbonara cook-with langgraph --order "carbonara for six, one without cheese"
+carbonara cook-with langgraph --venv --order "carbonara for six, one without cheese"
 ```
 
 ```bash
-carbonara cook-with crewai --temperature 0.8
+carbonara cook-with crewai --venv --temperature 0.8
 ```
 
 Near zero keeps the plan stable. Push it up and the expeditor starts

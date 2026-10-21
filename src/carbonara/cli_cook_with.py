@@ -1,50 +1,37 @@
 """
-# ~~~ ~~~ ~~~ ~~~ ~~~ carbonara cook-with ~~~ ~~~ ~~~ ~~~ ~~~
-#
-# Cook the carbonara with one agent stack, in a virtual environment of
-# its own. A stack with no environment yet is prepped first, so the first
-# cook with a stack takes as long as the install and every one after it
-# does not.
-#
-# The order, the model, and the sampling knobs reach the stack as
-# CARBONARA_* environment variables. The stack runs under a different
-# interpreter, so they cannot be passed any other way.
-#
-# Telemetry is off for every stack unless --telemetry says otherwise.
-#
-# --docker cooks in a container instead, built from the same pinned
-# requirements. The container sits on a locked network with no route
-# out, and reaches Ollama on the host through a relay. --telemetry opens
-# the network back up.
-#
-# Usage:
-#
-#    carbonara cook-with STACK [--order TEXT] [--model NAME]
-#    carbonara cook-with STACK [--temperature N] [--stream-delay N]
-#    carbonara cook-with STACK [--telemetry] [--docker]
-#
-# STACK is one of: no-framework, crewai, langgraph, smolagents.
-#
-# Options:
-#
-#    --order TEXT        the order to give the kitchen. Default is
-#                        "make me a carbonara".
-#    --model NAME        Ollama model. Default is
-#                        hf.co/CohereLabs/tiny-aya-global-GGUF:Q4_K_M.
-#    --temperature N     0.0 to 2.0. Near zero keeps the plan stable.
-#                        Push it up and the expeditor improvises.
-#    --stream-delay N    seconds per token, for slowing the reasoning
-#                        trace down on fast hardware.
-#    --telemetry         leave the framework's own telemetry defaults
-#                        alone. Off by default.
-#    --docker            cook in a Docker container, behind a locked network.
-#                        Builds the stack's image first if it has none.
+        carbonara -- cook-with
+
+https://github.com/east-van-ai/carbonara
+
+Cook the carbonara with one agent stack. --venv cooks in the stack's virtual
+environment, and --docker in a container. One of the two is required, and
+neither is a default. A stack not yet prepped in that mode is prepped first,
+so the first cook takes as long as the install and every one after it does not.
+
+The order, the model, and the sampling knobs reach the stack as CARBONARA_*
+environment variables. The stack runs under a different interpreter, so they
+cannot be passed any other way. Before the stack starts, carbonara prints the
+command it runs, in a form a shell can paste.
+
+Telemetry is off for every stack unless --telemetry says otherwise.
+
+Under --docker, the container is built from the same pinned requirements.
+It sits on a locked network with no route out, and reaches Ollama on the
+host through a relay. --telemetry opens the network back up.
+
+A cook exits with the stack's own exit code.
+
+The table below shows where each stack stands, in both modes.
 """
 
-from . import containers, environ, registry
-from .args import EXIT_ERROR
+from . import containers, environ, errors, registry
 
-USAGE = "carbonara cook-with STACK [--order TEXT] [--model NAME] [--temperature N]"
+HELP = "cook the demo with one stack"
+USAGE = (
+    "carbonara cook-with STACK (--venv | --docker) [--order TEXT] [--model NAME] "
+    "[--temperature N] [--stream-delay N] [--telemetry]"
+)
+SLOTS = ("STACK",)
 
 
 def overrides(args):
@@ -59,24 +46,17 @@ def overrides(args):
 
 
 def run(stack, args):
-    """Check readiness, build the environment if needed, then cook."""
+    """Check readiness, build the environment if needed, cook, return its code."""
     if args.docker:
         return run_docker(stack, args)
 
-    ollama = environ.check_ollama(args.model or registry.DEFAULT_MODEL)
-    if not ollama.ok:
-        environ.report(ollama)
-        return EXIT_ERROR
+    environ.require(environ.check_ollama(args.model or registry.DEFAULT_MODEL))
 
     if not environ.is_built(stack):
-        interpreter = environ.check_interpreter(stack)
-        if not interpreter.ok:
-            environ.report(interpreter)
-            return EXIT_ERROR
+        environ.require(environ.check_interpreter(stack))
         print(f"\ncarbonara: first cook with {stack.name}, prepping its station")
         if not environ.build(stack):
-            print(f"carbonara: could not build the {stack.name} environment")
-            return EXIT_ERROR
+            raise errors.RuntimeFailure(f"could not build the {stack.name} environment")
 
     if args.telemetry:
         print("carbonara: --telemetry, leaving the framework's own defaults alone")
@@ -85,24 +65,18 @@ def run(stack, args):
 
 
 def run_docker(stack, args):
-    """Check readiness, build the image if needed, then cook in a container."""
-    docker = containers.check_docker()
-    if not docker.ok:
-        environ.report(docker)
-        return EXIT_ERROR
-
-    ollama = environ.check_ollama(args.model or registry.DEFAULT_MODEL)
-    if not ollama.ok:
-        environ.report(ollama)
-        return EXIT_ERROR
+    """Check readiness, build the image if needed, cook in a container."""
+    environ.require(containers.check_docker())
+    environ.require(environ.check_ollama(args.model or registry.DEFAULT_MODEL))
 
     if not containers.is_built(stack):
         print(
             f"\ncarbonara: first cook with {stack.name} in Docker, building its image"
         )
         if not containers.build(stack):
-            print(f"carbonara: could not build the {containers.image(stack)} image")
-            return EXIT_ERROR
+            raise errors.RuntimeFailure(
+                f"could not build the {containers.image(stack)} image"
+            )
 
     if args.telemetry:
         print("carbonara: --telemetry, leaving the framework's own defaults alone")

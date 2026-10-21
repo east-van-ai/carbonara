@@ -1,9 +1,9 @@
 # Docker
 
-`--docker` runs a stack in a container instead of a virtual environment. The
-point is to show the demo works both ways, so neither mode replaces the other.
-This file holds the image, the locked network, the relay to Ollama, and what
-the lock cannot stop.
+`--docker` runs a stack in a container, and `--venv` in a virtual environment.
+The point is to show the demo works both ways, so neither mode replaces the
+other. This file holds the image, the locked network, the relay to Ollama, and
+what the lock cannot stop.
 
 ## The image does the venv's job
 

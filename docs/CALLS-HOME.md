@@ -20,8 +20,8 @@ nothing here speaks for them.
 
 ## What each stack does
 
-Each stack cooked with the frameworks' own defaults, `cook-with STACK
---telemetry`, on macOS, with Ollama local and no API keys set.
+Each stack cooked in its venv with the frameworks' own defaults, `cook-with
+STACK --venv --telemetry`, on macOS, with Ollama local and no API keys set.
 
 | Stack | Reaches | Made by | When |
 | --- | --- | --- | --- |
@@ -139,7 +139,7 @@ socket.getaddrinfo = _logged
 Save it in a directory of its own, then cook with that directory on the path:
 
 ```bash
-PYTHONPATH=/path/to/logger HOSTLOG=/tmp/hosts.txt carbonara cook-with crewai --telemetry
+PYTHONPATH=/path/to/logger HOSTLOG=/tmp/hosts.txt carbonara cook-with crewai --venv --telemetry
 ```
 
 Each line says how many seconds into the run the lookup came, the hostname,

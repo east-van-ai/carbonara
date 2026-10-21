@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-21
+
+### Fixed
+
+- A bare word after a flag, as in `clean crewai --docker extra`, is refused, exit 1,
+  and no longer runs the command.
+
+### Changed
+
+- `prep`, `cook-with`, and `clean` need `--venv` or `--docker`, where STACK alone
+  used to mean a venv. A missing mode is exit 1, and both together exit 2.
+- Bare `carbonara` prints the banner, then `--help`. Each command's page ends in its
+  own `--help`, which names every default. Help is never coloured.
+- Bare `prep`, `cook-with`, and `clean` print the stack table from `list`, so each
+  page shows which stacks are built in each mode.
+- A stray word after `list` or `version` reads `takes nothing after it`.
+- `--stream-delay`'s help says it reaches no-framework only.
+
 ## [0.2.6] - 2026-10-20
 
 ### Added
