@@ -9,6 +9,7 @@ import os
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import urllib.error
@@ -275,8 +276,30 @@ def run(stack, overrides=None, telemetry=False):
     print_command(["env", *(f"{k}={v}" for k, v in environment.items()), *command])
     if not telemetry:
         decline_crewai_tracing()
-    completed = subprocess.run(command, env={**os.environ, **environment}, check=False)
-    return completed.returncode
+    return wait_for(command, env={**os.environ, **environment})
+
+
+def wait_for(argv, **options):
+    """Run a child to its end and return its exit code, stopping it first if interrupted.
+
+    An interruption gives the child a second to leave on its own, since a terminal
+    Ctrl-C reaches it too. Then SIGINT, which `docker run` passes on to its
+    container, and only then a kill. `subprocess.run` kills at once, and a killed
+    `docker run` leaves its container cooking.
+    """
+    child = subprocess.Popen(argv, **options)
+    try:
+        return child.wait()
+    except BaseException:
+        for nudge in (None, signal.SIGINT, signal.SIGKILL):
+            if nudge is not None:
+                child.send_signal(nudge)
+            try:
+                child.wait(timeout=1 if nudge is None else 10)
+                break
+            except subprocess.TimeoutExpired:
+                continue
+        raise
 
 
 ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")

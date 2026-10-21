@@ -170,6 +170,24 @@ line the same way.
 It prints on every cook, with no flag to ask for it or to turn it off. Pasted
 into a shell, it cooks the same stack the same way, without carbonara.
 
+One variable is set and never printed. Every docker command runs with
+`DOCKER_CLI_HINTS=false`, which hides Docker Desktop's advertising after a
+container fails. A Ctrl-C counts as a failure. A pasted command cooks the same,
+with the hint back. A `DOCKER_CLI_HINTS` already set is left alone.
+
+## Stopping a cook
+
+Ctrl-C and SIGTERM stop a cook the same way. carbonara gives the stack a
+second to leave on its own, then sends it SIGINT, then kills it. A Docker
+cook's relay is removed on the way out. carbonara then prints one line,
+`carbonara: stopped by Ctrl-C` or `stopped by SIGTERM`, and exits 130 or 143:
+128 plus the signal number, as a shell reports it. The stack may still print
+its own traceback, since it gets SIGINT too.
+
+SIGKILL cannot be caught. A cook killed that way leaves the stack running to
+the end, and a Docker cook leaves its relay. `clean --docker` removes a relay
+whose carbonara is gone, and never one serving a running cook.
+
 ## Readiness
 
 Two things fail outside the tool's control, and both fail the same way for
@@ -199,6 +217,7 @@ Standard for the toolchain.
 | 0 | Success, or documentation from a bare command word. |
 | 1 | Its own errors: a missing or stray word, no mode, a failed check or run. |
 | 2 | argparse refused the line: unknown words or flags, a bad value, both modes. |
+| 130, 143 | Stopped by Ctrl-C or SIGTERM, after the stack and any relay. |
 
 Once a stack's script starts, `cook-with` exits with that script's own code,
 passed through unchanged.

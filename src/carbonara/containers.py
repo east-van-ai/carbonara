@@ -18,6 +18,8 @@ DOCKERFILE = Path(__file__).parent / "docker" / "Dockerfile"
 # Internal, so a container on it has no route out. Only the relay joins it
 # from the outside.
 NETWORK = "carbonara-locked"
+# A relay is named for the carbonara process that started it, so a dead one shows.
+RELAY_PREFIX = "carbonara-relay-"
 
 # socat 1.8.1.3, pinned by digest so the one thing allowed onto the locked
 # network never changes under it.
@@ -125,6 +127,52 @@ def relay_argv(name):
     ]
 
 
+def relay_rm_argv(name):
+    """Return the command that removes a relay, running or not."""
+    return ["docker", "rm", "--force", name]
+
+
+def docker_env():
+    """Return the environment for a docker command: ours, with Docker's hints off.
+
+    Docker Desktop advertises its AI helper after a container fails, which
+    includes every Ctrl-C. A DOCKER_CLI_HINTS the user set is left as it is.
+    """
+    return {"DOCKER_CLI_HINTS": "false", **os.environ}
+
+
+def orphaned_relays():
+    """Return the relays whose carbonara process is gone.
+
+    A relay serving a live cook is never listed, so clean cannot cut one off.
+    """
+    listed = subprocess.run(
+        ["docker", "ps", "--all", "--filter", f"name={RELAY_PREFIX}"]
+        + ["--format", "{{.Names}}"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=docker_env(),
+    )
+    orphans = []
+    for name in listed.stdout.split():
+        pid = name.removeprefix(RELAY_PREFIX)
+        if name.startswith(RELAY_PREFIX) and pid.isdigit() and not alive(int(pid)):
+            orphans.append(name)
+    return orphans
+
+
+def alive(pid):
+    """Report whether a process with this PID exists, ours to signal or not."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
 def connect_argv(name):
     """Return the command that puts the relay on the locked network."""
     return ["docker", "network", "connect", "--alias", RELAY_ALIAS, NETWORK, name]
@@ -138,8 +186,9 @@ def run_argv(stack, overrides=None, telemetry=False, tty=False):
     rather than the only defence.
     """
     argv = ["docker", "run", "--rm"]
+    # Never --interactive: with it, Ctrl-C is a keystroke for the container.
     if tty:
-        argv += ["--interactive", "--tty"]
+        argv += ["--tty"]
 
     environment = {}
     if telemetry:
@@ -178,7 +227,11 @@ def check_docker():
         )
     try:
         answered = subprocess.run(
-            ["docker", "info"], capture_output=True, timeout=20, check=False
+            ["docker", "info"],
+            capture_output=True,
+            timeout=20,
+            check=False,
+            env=docker_env(),
         )
     except subprocess.TimeoutExpired:
         answered = None
@@ -193,6 +246,7 @@ def is_built(stack):
         ["docker", "image", "inspect", image(stack)],
         capture_output=True,
         check=False,
+        env=docker_env(),
     )
     return inspected.returncode == 0
 
@@ -202,7 +256,7 @@ def build(stack, pinned=True):
     print(f"  building {image(stack)} on Python {stack.python_version}")
     argv = build_argv(stack, pinned)
     environ.print_command(argv)
-    return subprocess.run(argv, check=False).returncode == 0
+    return subprocess.run(argv, check=False, env=docker_env()).returncode == 0
 
 
 def quietly(argv, what):
@@ -211,7 +265,9 @@ def quietly(argv, what):
     Returns None on success, or what could not be done and Docker's own words.
     """
     environ.print_command(argv)
-    done = subprocess.run(argv, capture_output=True, text=True, check=False)
+    done = subprocess.run(
+        argv, capture_output=True, text=True, check=False, env=docker_env()
+    )
     if done.returncode == 0:
         return None
     return f"could not {what}\n  {done.stderr.strip()}"
@@ -227,7 +283,10 @@ def strictly(argv, what):
 def network_exists():
     """Report whether the locked network is there."""
     inspected = subprocess.run(
-        ["docker", "network", "inspect", NETWORK], capture_output=True, check=False
+        ["docker", "network", "inspect", NETWORK],
+        capture_output=True,
+        check=False,
+        env=docker_env(),
     )
     return inspected.returncode == 0
 
@@ -241,7 +300,7 @@ def ensure_network():
 def cook(argv):
     """Print the stack's docker run, run it, and return its exit code."""
     environ.print_command(argv)
-    return subprocess.run(argv, check=False).returncode
+    return environ.wait_for(argv, env=docker_env())
 
 
 def run(stack, overrides=None, telemetry=False):
@@ -257,12 +316,12 @@ def run(stack, overrides=None, telemetry=False):
 
     environ.decline_crewai_tracing()
     ensure_network()
-    relay = f"carbonara-relay-{os.getpid()}"
+    relay = f"{RELAY_PREFIX}{os.getpid()}"
     try:
         strictly(relay_argv(relay), "start the Ollama relay")
         strictly(connect_argv(relay), f"put the relay on {NETWORK}")
         return cook(argv)
     finally:
-        remove = ["docker", "rm", "--force", relay]
+        remove = relay_rm_argv(relay)
         environ.print_command(remove)
-        subprocess.run(remove, capture_output=True, check=False)
+        subprocess.run(remove, capture_output=True, check=False, env=docker_env())

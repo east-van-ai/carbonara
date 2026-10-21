@@ -1,12 +1,24 @@
-# carbonara
+# 🍝 carbonara
 
-Four AI agent projects, merged into one command.
+## Good ingredients. Different chefs. Who makes the best Carbonara?
 
-The same demo exists four times over, once per agent stack, each built as a
-standalone project in a repository of its own. `carbonara` brings all four
-under a single CLI. Their implementations are vendored here whole, so this is
-a merge of finished work rather than a fresh start, and it arrives with four
-projects' worth of code already in it.
+Three AI agent frameworks and one plain-Python cook enter the kitchen. They get
+the same order, the same ingredients, and the same hungry customer. But they
+don't cook the same way. Can they plan, delegate, coordinate, and get dinner on
+the table?
+
+And more importantly...
+
+**Can you trust what's happening behind the kitchen doors?**
+
+Four cooks. One recipe. One controlled environment. Let's see what happens.
+
+## Meet the cooks
+
+Each cook already had a kitchen of its own. The same demo was built four times,
+once per agent stack, each as a standalone project in its own repository. This
+project brings all four under one roof and one CLI. Their code comes along
+whole. Nothing was rewritten to make the comparison easier.
 
 | Stack | What it is | Calls home |
 | --- | --- | --- |
@@ -15,14 +27,19 @@ projects' worth of code already in it.
 | `smolagents` | Minimal agents over LiteLLM | yes |
 | `no-framework` | Plain Python. A prompt and a registry | no |
 
-What they all build is the same kitchen. A dispatcher takes a plain English
-order. It knows nothing about cooking. An expeditor, powered by a local LLM,
-reasons through the job, picks the right workers, and puts them in the right
-order. The workers each do one thing and report back.
+Every cook runs the same kitchen. A dispatcher takes the order in plain
+English, and knows nothing about cooking. An expeditor, a small LLM running on
+your machine, reasons through the job, picks the right workers, and calls them
+in the right order. Each worker does one job and reports back.
 
-The interesting part is that nobody hardcoded the sequence. The model works out
-that the guanciale can render while the pasta boils, and that the egg sauce
-must not meet a hot pan. Watching it reason is the demo.
+Nobody hardcoded the sequence. The model has to work out that the guanciale can
+render while the pasta boils, and that the egg sauce must never meet a hot pan.
+Watching it reason is the demo.
+
+And sometimes it can't. The model is small on purpose, and some orders leave
+the expeditor with no plan at all. The plain-Python kitchen owns up to it in so
+many words: "Sorry, the kitchen couldn't figure out what to do with that." A
+kitchen that fails out loud is part of the show.
 
 Run the four back to back and the differences between them stop being abstract.
 
@@ -61,9 +78,9 @@ plural. That gap is most of what this repository is for.
 stack an interpreter of its own. Both are below.
 
 If that made you want to read them rather than run them, they are four files,
-one per stack, in `src/carbonara/stacks/`. Around 200 lines each and nothing is
-shared between them, on purpose. Factor the common parts out and the comparison
-goes with it.
+one per stack, in `src/carbonara/stacks/`. Each is under 300 lines, and nothing
+is shared between them, on purpose. Factor the common parts out and the
+comparison goes with it.
 
 ## Run it
 
@@ -107,6 +124,9 @@ on the audience.
 
 [DISPATCHER]  Your carbonara is ready. Silky, rich, no scrambled eggs.
 ```
+
+That is the good night. Send in an order the kitchen has never heard of, and
+the night can end very differently. Both are worth watching.
 
 ## The four stacks do not get along
 

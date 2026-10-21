@@ -41,6 +41,11 @@ def offline(monkeypatch, tmp_path):
     monkeypatch.setattr(containers, "check_docker", lambda: environ.Check(True))
     monkeypatch.setattr(containers, "is_built", lambda stack: False)
 
+    def started(argv, **options):
+        raise AssertionError(f"a test started a real child: {argv[:2]}")
+
+    monkeypatch.setattr(environ, "wait_for", started)
+
 
 @pytest.fixture
 def real_venvs_root():

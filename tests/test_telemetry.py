@@ -19,14 +19,11 @@ def captured_env(monkeypatch):
     """Run a stack without running anything, and hand back the environment."""
     seen = {}
 
-    class Completed:
-        returncode = 0
-
-    def fake_run(command, env=None, **kwargs):
+    def fake_wait_for(command, env=None, **options):
         seen.update(env or {})
-        return Completed()
+        return 0
 
-    monkeypatch.setattr(environ.subprocess, "run", fake_run)
+    monkeypatch.setattr(environ, "wait_for", fake_wait_for)
     return seen
 
 

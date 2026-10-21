@@ -48,10 +48,13 @@ port, Ollama's, to the host. The stack is handed `http://ollama.internal:11434`
 and never learns where Ollama really is.
 
 The relay belongs to one cook. It starts before the stack and is removed after,
-including on Ctrl-C, so a cook leaves no container behind. The network costs
-nothing and stays. `carbonara clean STACK --docker` removes it with the stack's
-image, and the next locked cook makes it again. The relay image stays: it is
-pinned by digest, so a fresh pull would bring back the same bytes.
+including on Ctrl-C and SIGTERM, so a cook leaves no container behind. Only
+SIGKILL leaves one, since nothing runs after it. The relay is named for its
+carbonara's process ID, so `clean --docker` can tell a leftover from a live
+one. The network costs nothing and stays. `carbonara clean STACK --docker`
+removes it with the stack's image and any leftover relay, and the next locked
+cook makes it again. The relay image stays: it is pinned by digest, so a fresh
+pull would bring back the same bytes.
 
 The relay's name on the locked network is `ollama.internal`, and the suffix is
 load-bearing. Ollama checks the `Host` header of every request and answers 403
@@ -65,6 +68,14 @@ relay, its connection to the locked network, then the stack. After the cook it
 prints the relay's removal, `docker rm --force`, and runs it. The relay never
 stops on its own, so this is what ends it. Pasted in order into a shell, the
 four commands rebuild the lock, cook, and leave nothing running.
+
+## Ctrl-C stays with carbonara
+
+At a terminal, the stack runs with `--tty` alone, never `--interactive`. With
+both, Docker puts the terminal in raw mode, and Ctrl-C reaches the container as
+a keystroke instead of reaching carbonara. Without `--interactive`, the
+container takes no stdin. So crewai's trace-sharing prompt under `--telemetry`
+answers no by itself.
 
 ## What the lock cannot stop
 

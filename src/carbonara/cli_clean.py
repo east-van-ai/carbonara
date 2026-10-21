@@ -9,7 +9,9 @@ One of the two is required, and neither is a default.
 
 --docker removes the stack's Docker image, and the locked network every
 Docker cook shares. The network outlives each cook, and this is the way to
-remove it. The next locked cook makes it again. The relay image stays.
+remove it. The next locked cook makes it again. A relay left by a cook that
+was killed goes first, since it holds the network; one serving a running cook
+stays. The relay image stays.
 
 There is no prompt, and no form that cleans every stack at once. Something
 already gone is reported and is not a failure, so running clean twice gives
@@ -70,6 +72,14 @@ def run_docker(stack):
         )
     else:
         print(f"carbonara: no image {tag}, nothing to clean")
+
+    # A relay left by a killed cook holds the network, so it goes first.
+    for relay in containers.orphaned_relays():
+        refusals.append(
+            containers.quietly(
+                containers.relay_rm_argv(relay), f"remove the orphaned relay {relay}"
+            )
+        )
 
     if containers.network_exists():
         refusals.append(

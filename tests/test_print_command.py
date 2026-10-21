@@ -14,7 +14,7 @@ from carbonara import containers, environ, registry
 
 @pytest.fixture
 def ran(monkeypatch):
-    """Stub subprocess.run, and hand back every argv it was given."""
+    """Stub subprocess.run and wait_for, and hand back every argv either was given."""
     seen = []
 
     class Completed:
@@ -24,7 +24,12 @@ def ran(monkeypatch):
         seen.append(argv)
         return Completed()
 
+    def fake_wait_for(argv, **options):
+        seen.append(argv)
+        return 0
+
     monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(environ, "wait_for", fake_wait_for)
     return seen
 
 

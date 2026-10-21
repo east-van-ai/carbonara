@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-21
+
+### Added
+
+- `clean --docker` removes a relay left behind by a killed cook.
+
+### Changed
+
+- Under `--docker --telemetry`, crewai's trace-sharing prompt answers no by itself.
+
+### Fixed
+
+- SIGTERM on a cook stops the stack and removes a Docker cook's relay, where it used
+  to leave both running. Ctrl-C and SIGTERM end on one line, exit 130 or 143.
+- An interrupted Docker cook no longer shows Docker Desktop's `What's next:` hint.
+
 ## [0.3.0] - 2026-10-21
 
 ### Fixed

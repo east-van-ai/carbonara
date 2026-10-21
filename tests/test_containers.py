@@ -163,3 +163,75 @@ def test_the_build_follows_the_stack(crewai, pinned, name):
 def test_the_dockerfile_ships():
     """A pipx install needs the Dockerfile beside the stacks."""
     assert containers.DOCKERFILE.is_file()
+
+
+#: Captured at import, before the offline fixture replaces it.
+CHECK_DOCKER = containers.check_docker
+
+
+@pytest.fixture
+def envs(monkeypatch):
+    """Stub every docker call and hand back the environment each was given."""
+    seen = []
+
+    class Completed:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(argv, **kwargs):
+        seen.append(kwargs.get("env"))
+        return Completed()
+
+    def fake_wait_for(argv, **options):
+        seen.append(options.get("env"))
+        return 0
+
+    monkeypatch.setattr(containers.subprocess, "run", fake_run)
+    monkeypatch.setattr(environ, "wait_for", fake_wait_for)
+    monkeypatch.setattr(containers.shutil, "which", lambda name: "/usr/bin/docker")
+    monkeypatch.delenv("DOCKER_CLI_HINTS", raising=False)
+    return seen
+
+
+def hints_of(envs):
+    """Return the DOCKER_CLI_HINTS each docker call ran with."""
+    return [env and env.get("DOCKER_CLI_HINTS") for env in envs]
+
+
+def test_every_docker_call_hides_the_hints(invoke, envs, crewai):
+    """A locked cook, a clean, and the probes all run with the hints off."""
+    assert invoke("cook-with", "crewai", "--docker")[0] == 0
+    assert invoke("clean", "crewai", "--docker")[0] == 0
+    CHECK_DOCKER()
+    containers.build(crewai)
+    assert len(envs) > 8
+    assert set(hints_of(envs)) == {"false"}
+
+
+def test_a_hint_asked_for_stays(invoke, envs, monkeypatch):
+    """DOCKER_CLI_HINTS already set is the user's, and it wins."""
+    monkeypatch.setenv("DOCKER_CLI_HINTS", "true")
+    assert invoke("cook-with", "crewai", "--docker")[0] == 0
+    assert set(hints_of(envs)) == {"true"}
+
+
+def test_the_hint_switch_is_never_printed(invoke, envs):
+    """Rule 4's one exception: the switch is set, not shown."""
+    _, out, _ = invoke("cook-with", "crewai", "--docker")
+    assert "carbonara: running" in out
+    assert "DOCKER_CLI_HINTS" not in out
+
+
+def test_a_terminal_run_takes_a_tty_and_never_stdin(crewai):
+    """--interactive puts the terminal in raw mode, and Ctrl-C bypasses carbonara."""
+    argv = containers.run_argv(crewai, tty=True)
+    assert "--tty" in argv
+    assert "--interactive" not in argv
+
+
+def test_a_run_off_a_terminal_takes_neither(crewai):
+    """Piped, the stack gets no tty and no stdin."""
+    argv = containers.run_argv(crewai)
+    assert "--tty" not in argv
+    assert "--interactive" not in argv

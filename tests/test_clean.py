@@ -4,8 +4,10 @@ The venv side runs for real against the offline fixture's scratch venvs root.
 The Docker side stubs subprocess.run, since the suite stays off Docker.
 """
 
+import os
 import shlex
 import subprocess
+import sys
 
 import pytest
 
@@ -27,15 +29,18 @@ def docker(monkeypatch):
 
     Hands back the state to adjust, and every argv run is recorded in it.
     """
-    state = {"image": True, "network": True, "fail": set(), "ran": []}
+    state = {"image": True, "network": True, "relays": [], "fail": set(), "ran": []}
 
     class Completed:
-        def __init__(self, returncode, stderr=""):
+        def __init__(self, returncode, stderr="", stdout=""):
             self.returncode = returncode
             self.stderr = stderr
+            self.stdout = stdout
 
     def fake_run(argv, **kwargs):
         state["ran"].append(argv)
+        if argv[:3] == ["docker", "ps", "--all"]:
+            return Completed(0, stdout="\n".join(state["relays"]))
         if argv[:3] == ["docker", "network", "inspect"]:
             return Completed(0 if state["network"] else 1)
         if argv[2] == "rm" and argv[1] in state["fail"]:
@@ -54,8 +59,15 @@ def removals(state):
 
 def printed(out):
     """Read back every command carbonara printed, as a shell would."""
-    blocks = out.split("carbonara: running\n")[1:]
-    return [shlex.split(block.splitlines()[0]) for block in blocks]
+    commands = []
+    for block in out.split("carbonara: running\n")[1:]:
+        lines = []
+        for line in block.splitlines():
+            lines.append(line.removesuffix("\\"))
+            if not line.endswith("\\"):
+                break
+        commands.append(shlex.split(" ".join(lines)))
+    return commands
 
 
 def test_a_built_venv_is_removed_and_its_siblings_stay(invoke):
@@ -162,3 +174,32 @@ def test_docker_clean_leaves_the_venv(invoke, docker):
     code, _, _ = invoke("clean", "crewai", "--docker")
     assert code == EXIT_OK
     assert path.exists()
+
+
+def dead_pid():
+    """Return a PID no process holds, by starting one and letting it finish."""
+    child = subprocess.Popen([sys.executable, "-c", ""])
+    child.wait()
+    return child.pid
+
+
+def test_docker_removes_an_orphaned_relay_before_the_network(invoke, docker):
+    """A relay whose carbonara is gone is removed, printed first, then the network."""
+    orphan = f"{containers.RELAY_PREFIX}{dead_pid()}"
+    live = f"{containers.RELAY_PREFIX}{os.getpid()}"
+    docker["relays"] = [orphan, live]
+    code, out, _ = invoke("clean", "crewai", "--docker")
+    assert code == EXIT_OK
+    expected = [
+        ["docker", "image", "rm", "carbonara-crewai"],
+        ["docker", "rm", "--force", orphan],
+        ["docker", "network", "rm", containers.NETWORK],
+    ]
+    assert removals(docker) == expected
+    assert printed(out) == expected
+
+
+def test_a_relay_serving_a_live_cook_is_never_listed(docker):
+    """The live relay stays, so clean cannot cut a running cook off from Ollama."""
+    docker["relays"] = [f"{containers.RELAY_PREFIX}{os.getpid()}", "carbonara-relay-x"]
+    assert containers.orphaned_relays() == []

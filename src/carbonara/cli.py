@@ -36,9 +36,12 @@ exit codes:
            model, no Docker), or a build or removal that failed partway
     2:     an unknown command, an unknown option, a bad value, an unknown
            STACK, or --venv and --docker together
+    130:   stopped by Ctrl-C, with the stack and any relay stopped first
+    143:   stopped by SIGTERM, the same way
     other: a cook exits with the stack's own exit code
 """
 
+import signal
 import sys
 from collections import namedtuple
 
@@ -135,6 +138,18 @@ def readiness_error(message):
     return EXIT_ERROR
 
 
+def stopped(message, code):
+    """Report a run a signal stopped, once its child and any relay are gone."""
+    sys.stdout.flush()
+    print(f"carbonara: {message}", file=sys.stderr)
+    return code
+
+
+def raise_stopped(signum, frame):
+    """Turn SIGTERM into an exception, so every finally on the way out still runs."""
+    raise errors.Stopped(signum)
+
+
 def runtime_error(message):
     """Report a run that stopped partway, naming what was written."""
     sys.stdout.flush()
@@ -185,12 +200,22 @@ def main(argv=None):
         either = " or ".join(command.modes)
         return usage_error(command.usage, f"{parsed.command} needs {either}")
 
+    # 128 plus the signal number is the shell's own code for a run a signal ended.
+    previous = signal.signal(signal.SIGTERM, raise_stopped)
     try:
         code = command.action(paths, parsed)
     except errors.ReadinessError as failure:
         return readiness_error(str(failure))
     except errors.RuntimeFailure as failure:
         return runtime_error(str(failure))
+    except KeyboardInterrupt:
+        return stopped("stopped by Ctrl-C", 128 + signal.SIGINT)
+    except errors.Stopped as stop:
+        return stopped(
+            f"stopped by {signal.Signals(stop.signum).name}", 128 + stop.signum
+        )
+    finally:
+        signal.signal(signal.SIGTERM, previous)
 
     return EXIT_OK if code is None else code
 
